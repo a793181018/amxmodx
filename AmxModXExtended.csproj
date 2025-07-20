@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>AmxModXExtended</AssemblyName>
+    <RootNamespace>AmxModX</RootNamespace>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AssemblyTitle>AMX Mod X Extended C# API</AssemblyTitle>
+    <AssemblyDescription>Extended C# API for AMX Mod X with CVar, Menu, GameConfig, Native, Message and DataPack systems</AssemblyDescription>
+    <AssemblyCompany>AMX Mod X Team</AssemblyCompany>
+    <AssemblyProduct>AMX Mod X Extended</AssemblyProduct>
+    <AssemblyCopyright>Copyright © AMX Mod X Team 2024</AssemblyCopyright>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>x86</PlatformTarget>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DefineConstants>TRACE</DefineConstants>
+    <DebugType>pdbonly</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="AmxModXExtendedInterop.cs" />
+    <Compile Include="AmxModXExtendedAPI.cs" />
+    <Compile Include="AmxModXExtendedExamples.cs" />
+    <Compile Include="SamplePlugin.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" />
+    <None Include="CHANGELOG.md" />
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="echo Build completed for $(AssemblyName)" />
+  </Target>
+
+</Project>

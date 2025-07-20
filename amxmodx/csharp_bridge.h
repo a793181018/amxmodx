@@ -202,6 +202,107 @@ CSHARP_EXPORT bool CSHARP_CALL UnregisterEvent(int eventHandle);
 CSHARP_EXPORT int CSHARP_CALL GetEventId(const char* eventName);
 CSHARP_EXPORT bool CSHARP_CALL GetEventInfo(int eventId, CSharpEventInfo* outInfo);
 
+// CVar system functions
+typedef void (CSHARP_CALL *CSharpCvarChangeCallback)(const char* cvarName, const char* oldValue, const char* newValue);
+
+CSHARP_EXPORT int CSHARP_CALL CreateCvar(const char* name, const char* value, int flags, const char* description);
+CSHARP_EXPORT bool CSHARP_CALL CvarExists(const char* name);
+CSHARP_EXPORT bool CSHARP_CALL GetCvarString(const char* name, char* buffer, int bufferSize);
+CSHARP_EXPORT bool CSHARP_CALL SetCvarString(const char* name, const char* value);
+CSHARP_EXPORT int CSHARP_CALL GetCvarInt(const char* name);
+CSHARP_EXPORT bool CSHARP_CALL SetCvarInt(const char* name, int value);
+CSHARP_EXPORT float CSHARP_CALL GetCvarFloat(const char* name);
+CSHARP_EXPORT bool CSHARP_CALL SetCvarFloat(const char* name, float value);
+CSHARP_EXPORT int CSHARP_CALL GetCvarFlags(const char* name);
+CSHARP_EXPORT bool CSHARP_CALL SetCvarFlags(const char* name, int flags);
+CSHARP_EXPORT int CSHARP_CALL HookCvarChange(const char* name, CSharpCvarChangeCallback callback);
+CSHARP_EXPORT bool CSHARP_CALL UnhookCvarChange(int hookId);
+
+// Menu system functions
+typedef void (CSHARP_CALL *CSharpMenuSelectCallback)(int clientId, int menuId, int item);
+typedef void (CSHARP_CALL *CSharpMenuCancelCallback)(int clientId, int menuId, int reason);
+
+struct CSharpMenuInfo
+{
+    char title[256];
+    int menuId;
+    int itemCount;
+    int pageCount;
+    bool isActive;
+    bool neverExit;
+    bool forceExit;
+};
+
+CSHARP_EXPORT int CSHARP_CALL CreateMenu(const char* title, CSharpMenuSelectCallback selectCallback, CSharpMenuCancelCallback cancelCallback);
+CSHARP_EXPORT bool CSHARP_CALL AddMenuItem(int menuId, const char* name, const char* command, int access);
+CSHARP_EXPORT bool CSHARP_CALL AddMenuBlank(int menuId, int slot);
+CSHARP_EXPORT bool CSHARP_CALL AddMenuText(int menuId, const char* text, int slot);
+CSHARP_EXPORT bool CSHARP_CALL DisplayMenu(int menuId, int clientId, int page);
+CSHARP_EXPORT bool CSHARP_CALL DestroyMenu(int menuId);
+CSHARP_EXPORT bool CSHARP_CALL GetMenuInfo(int menuId, CSharpMenuInfo* outInfo);
+CSHARP_EXPORT int CSHARP_CALL GetMenuPages(int menuId);
+CSHARP_EXPORT int CSHARP_CALL GetMenuItems(int menuId);
+
+// Game config functions
+struct CSharpGameConfigInfo
+{
+    char fileName[128];
+    int configId;
+    bool isValid;
+};
+
+CSHARP_EXPORT int CSHARP_CALL LoadGameConfig(const char* fileName);
+CSHARP_EXPORT bool CSHARP_CALL GetGameConfigOffset(int configId, const char* key, int* offset);
+CSHARP_EXPORT bool CSHARP_CALL GetGameConfigAddress(int configId, const char* key, void** address);
+CSHARP_EXPORT bool CSHARP_CALL GetGameConfigKeyValue(int configId, const char* key, char* buffer, int bufferSize);
+CSHARP_EXPORT bool CSHARP_CALL CloseGameConfig(int configId);
+
+// Native management functions
+typedef int (CSHARP_CALL *CSharpNativeCallback)(int paramCount);
+
+CSHARP_EXPORT bool CSHARP_CALL RegisterNative(const char* name, CSharpNativeCallback callback);
+CSHARP_EXPORT bool CSHARP_CALL UnregisterNative(const char* name);
+CSHARP_EXPORT int CSHARP_CALL GetNativeParam(int index);
+CSHARP_EXPORT bool CSHARP_CALL GetNativeString(int index, char* buffer, int bufferSize);
+CSHARP_EXPORT bool CSHARP_CALL SetNativeString(int index, const char* value);
+CSHARP_EXPORT bool CSHARP_CALL GetNativeArray(int index, int* buffer, int size);
+CSHARP_EXPORT bool CSHARP_CALL SetNativeArray(int index, const int* buffer, int size);
+
+// Message system functions
+typedef void (CSHARP_CALL *CSharpMessageCallback)(int msgType, int msgDest, int entityId);
+
+CSHARP_EXPORT bool CSHARP_CALL BeginMessage(int msgType, int msgDest, int entityId);
+CSHARP_EXPORT bool CSHARP_CALL EndMessage();
+CSHARP_EXPORT bool CSHARP_CALL WriteByte(int value);
+CSHARP_EXPORT bool CSHARP_CALL WriteChar(int value);
+CSHARP_EXPORT bool CSHARP_CALL WriteShort(int value);
+CSHARP_EXPORT bool CSHARP_CALL WriteLong(int value);
+CSHARP_EXPORT bool CSHARP_CALL WriteAngle(float value);
+CSHARP_EXPORT bool CSHARP_CALL WriteCoord(float value);
+CSHARP_EXPORT bool CSHARP_CALL WriteString(const char* value);
+CSHARP_EXPORT bool CSHARP_CALL WriteEntity(int entityId);
+CSHARP_EXPORT int CSHARP_CALL RegisterMessage(int msgId, CSharpMessageCallback callback);
+CSHARP_EXPORT bool CSHARP_CALL UnregisterMessage(int hookId);
+CSHARP_EXPORT int CSHARP_CALL GetMessageArgs();
+CSHARP_EXPORT int CSHARP_CALL GetMessageArgType(int argIndex);
+CSHARP_EXPORT int CSHARP_CALL GetMessageArgInt(int argIndex);
+CSHARP_EXPORT float CSHARP_CALL GetMessageArgFloat(int argIndex);
+CSHARP_EXPORT bool CSHARP_CALL GetMessageArgString(int argIndex, char* buffer, int bufferSize);
+
+// DataPack functions
+CSHARP_EXPORT int CSHARP_CALL CreateDataPack();
+CSHARP_EXPORT bool CSHARP_CALL WritePackCell(int packId, int value);
+CSHARP_EXPORT bool CSHARP_CALL WritePackFloat(int packId, float value);
+CSHARP_EXPORT bool CSHARP_CALL WritePackString(int packId, const char* value);
+CSHARP_EXPORT int CSHARP_CALL ReadPackCell(int packId);
+CSHARP_EXPORT float CSHARP_CALL ReadPackFloat(int packId);
+CSHARP_EXPORT bool CSHARP_CALL ReadPackString(int packId, char* buffer, int bufferSize);
+CSHARP_EXPORT bool CSHARP_CALL ResetPack(int packId);
+CSHARP_EXPORT int CSHARP_CALL GetPackPosition(int packId);
+CSHARP_EXPORT bool CSHARP_CALL SetPackPosition(int packId, int position);
+CSHARP_EXPORT bool CSHARP_CALL IsPackEnded(int packId);
+CSHARP_EXPORT bool CSHARP_CALL DestroyDataPack(int packId);
+
 // Event parameter reading functions
 CSHARP_EXPORT int CSHARP_CALL GetEventArgCount();
 CSHARP_EXPORT bool CSHARP_CALL GetEventArg(int index, CSharpEventParam* outParam);
@@ -434,6 +535,39 @@ namespace CSharpBridge
         int amxForwardId;
     };
 
+    // Menu callback storage
+    struct MenuCallbackInfo
+    {
+        int menuId;
+        CSharpMenuSelectCallback selectCallback;
+        CSharpMenuCancelCallback cancelCallback;
+        Menu* menu;
+        int selectForwardId;
+    };
+
+    // Game config storage
+    struct GameConfigInfo
+    {
+        int configId;
+        IGameConfig* config;
+        ke::AString fileName;
+    };
+
+    // Native callback storage
+    struct NativeCallbackInfo
+    {
+        ke::AString name;
+        CSharpNativeCallback callback;
+        int nativeId;
+    };
+
+    // DataPack storage
+    struct DataPackInfo
+    {
+        int packId;
+        CDataPack* pack;
+    };
+
     // Bridge state management
     void Initialize();
     void Cleanup();
@@ -454,12 +588,19 @@ namespace CSharpBridge
     extern ke::Vector<ForwardCallbackInfo*> g_forwardCallbacks;
     extern ke::Vector<MessageCallbackInfo*> g_messageCallbacks;
     extern ke::Vector<CvarCallbackInfo*> g_cvarCallbacks;
+    extern ke::Vector<MenuCallbackInfo*> g_menuCallbacks;
+    extern ke::Vector<GameConfigInfo*> g_gameConfigs;
+    extern ke::Vector<NativeCallbackInfo*> g_nativeCallbacks;
+    extern ke::Vector<DataPackInfo*> g_dataPacks;
     extern int g_nextCommandId;
     extern int g_nextMenuId;
     extern int g_nextEventHandle;
     extern int g_nextForwardId;
     extern int g_nextMessageHandle;
     extern int g_nextCvarHookId;
+    extern int g_nextGameConfigId;
+    extern int g_nextNativeId;
+    extern int g_nextDataPackId;
     extern bool g_initialized;
 
     // Event system helpers
@@ -478,6 +619,7 @@ namespace CSharpBridge
 
     // CVar system helpers
     int HookCvarChangeInternal(const char* name, CSharpCvarCallback callback);
+    int HookCvarChangeInternal(const char* name, CSharpCvarChangeCallback callback);
     void HandleCvarCallback(const char* cvarName, const char* oldValue, const char* newValue);
 }
 
