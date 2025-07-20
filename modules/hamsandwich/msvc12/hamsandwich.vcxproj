@@ -14,6 +14,7 @@
     <ProjectGuid>{A8B3717F-2663-4099-AE96-AF5B7266FDA8}</ProjectGuid>
     <RootNamespace>hamsandwich</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -24,7 +25,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -54,7 +55,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\;..\..\..\public;..\..\..\public\sdk;..\..\..\public\amtl;..\..\third_party;..\..\third_party\hashing;$(METAMOD)\metamod;$(HLSDK)\common;$(HLSDK)\engine;$(HLSDK)\dlls;$(HLSDK)\pm_shared;$(HLSDK)\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\..\public;..\..\..\public\sdk;..\..\..\public\amtl;..\..\third_party;..\..\third_party\hashing;E:\gitProject\amxmodx\metamod-hl1\metamod;E:\gitProject\amxmodx\hlsdk\common;E:\gitProject\amxmodx\hlsdk\engine;E:\gitProject\amxmodx\hlsdk\dlls;E:\gitProject\amxmodx\hlsdk\pm_shared;E:\gitProject\amxmodx\hlsdk\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;HAMSANDWICH_EXPORTS; HAVE_STDINT_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -64,6 +65,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -83,7 +86,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\;..\..\..\public;..\..\..\public\sdk;..\..\..\public\amtl;..\..\third_party;..\..\third_party\hashing;$(METAMOD)\metamod;$(HLSDK)\common;$(HLSDK)\engine;$(HLSDK)\dlls;$(HLSDK)\pm_shared;$(HLSDK)\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\;..\..\..\public;..\..\..\public\sdk;..\..\..\public\amtl;..\..\third_party;..\..\third_party\hashing;E:\gitProject\amxmodx\metamod-hl1\metamod;E:\gitProject\amxmodx\hlsdk\common;E:\gitProject\amxmodx\hlsdk\engine;E:\gitProject\amxmodx\hlsdk\dlls;E:\gitProject\amxmodx\hlsdk\pm_shared;E:\gitProject\amxmodx\hlsdk\public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;HAMSANDWICH_EXPORTS; HAVE_STDINT_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -106,6 +109,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\public\memtools\MemoryUtils.cpp" />
     <ClCompile Include="..\call_funcs.cpp" />
+    <ClCompile Include="..\csharp_bridge.cpp" />
     <ClCompile Include="..\hook_callbacks.cpp" />
     <ClCompile Include="..\hook_create.cpp" />
     <ClCompile Include="..\hook_native.cpp" />
@@ -121,6 +125,7 @@
     <ClInclude Include="..\..\..\public\HLTypeConversion.h" />
     <ClInclude Include="..\..\..\public\memtools\MemoryUtils.h" />
     <ClInclude Include="..\call_funcs.h" />
+    <ClInclude Include="..\csharp_bridge.h" />
     <ClInclude Include="..\forward.h" />
     <ClInclude Include="..\hook.h" />
     <ClInclude Include="..\hook_callbacks.h" />

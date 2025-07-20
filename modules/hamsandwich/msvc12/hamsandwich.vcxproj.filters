@@ -74,6 +74,9 @@
     <ClCompile Include="..\..\..\public\memtools\MemoryUtils.cpp">
       <Filter>Memtools</Filter>
     </ClCompile>
+    <ClCompile Include="..\csharp_bridge.cpp">
+      <Filter>Hooks</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\call_funcs.h">
@@ -123,6 +126,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\public\memtools\MemoryUtils.h">
       <Filter>Memtools</Filter>
+    </ClInclude>
+    <ClInclude Include="..\csharp_bridge.h">
+      <Filter>Hooks</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
