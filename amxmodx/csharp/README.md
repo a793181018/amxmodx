@@ -298,6 +298,66 @@ public static class MenuKeys
 | `SlayPlayer()` | 杀死玩家 / Slay player |
 | `FindPlayersByName()` | 根据名称查找玩家 / Find players by name |
 
+#### 实体管理接口 / Entity Management Interfaces
+| 方法 / Method | 描述 / Description |
+|---------------|-------------------|
+| `CreateEntity()` | 创建实体 / Create entity |
+| `RemoveEntity()` | 移除实体 / Remove entity |
+| `GetEntityCount()` | 获取实体数量 / Get entity count |
+| `FindEntityByClassName()` | 按类名查找实体 / Find entity by class name |
+| `FindEntityByTargetName()` | 按目标名查找实体 / Find entity by target name |
+| `FindEntityInSphere()` | 在球形范围内查找实体 / Find entity in sphere |
+| `GetEntityInt()` | 获取实体整数属性 / Get entity integer property |
+| `SetEntityInt()` | 设置实体整数属性 / Set entity integer property |
+| `GetEntityFloat()` | 获取实体浮点属性 / Get entity float property |
+| `SetEntityFloat()` | 设置实体浮点属性 / Set entity float property |
+| `GetEntityString()` | 获取实体字符串属性 / Get entity string property |
+| `SetEntityString()` | 设置实体字符串属性 / Set entity string property |
+| `GetEntityVector()` | 获取实体向量属性 / Get entity vector property |
+| `SetEntityVector()` | 设置实体向量属性 / Set entity vector property |
+| `SetEntityOrigin()` | 设置实体位置 / Set entity origin |
+| `SetEntitySize()` | 设置实体大小 / Set entity size |
+| `SetEntityModel()` | 设置实体模型 / Set entity model |
+
+#### 消息系统接口 / Message System Interfaces
+| 方法 / Method | 描述 / Description |
+|---------------|-------------------|
+| `RegisterMessage()` | 注册消息回调 / Register message callback |
+| `UnregisterMessage()` | 注销消息回调 / Unregister message callback |
+| `SetMessageBlock()` | 设置消息阻塞 / Set message block |
+| `GetMessageBlock()` | 获取消息阻塞状态 / Get message block status |
+| `MessageBegin()` | 开始消息 / Begin message |
+| `MessageEnd()` | 结束消息 / End message |
+| `WriteByte()` | 写入字节 / Write byte |
+| `WriteShort()` | 写入短整数 / Write short |
+| `WriteLong()` | 写入长整数 / Write long |
+| `WriteString()` | 写入字符串 / Write string |
+| `WriteAngle()` | 写入角度 / Write angle |
+| `WriteCoord()` | 写入坐标 / Write coordinate |
+| `WriteEntity()` | 写入实体 / Write entity |
+| `GetUserMessageId()` | 获取用户消息ID / Get user message ID |
+| `GetUserMessageName()` | 获取用户消息名称 / Get user message name |
+
+#### CVars系统接口 / CVars System Interfaces
+| 方法 / Method | 描述 / Description |
+|---------------|-------------------|
+| `CreateCvar()` | 创建CVar / Create CVar |
+| `RegisterCvar()` | 注册CVar / Register CVar |
+| `CvarExists()` | 检查CVar是否存在 / Check if CVar exists |
+| `GetCvarString()` | 获取CVar字符串值 / Get CVar string value |
+| `GetCvarInt()` | 获取CVar整数值 / Get CVar integer value |
+| `GetCvarFloat()` | 获取CVar浮点值 / Get CVar float value |
+| `GetCvarFlags()` | 获取CVar标志 / Get CVar flags |
+| `SetCvarString()` | 设置CVar字符串值 / Set CVar string value |
+| `SetCvarInt()` | 设置CVar整数值 / Set CVar integer value |
+| `SetCvarFloat()` | 设置CVar浮点值 / Set CVar float value |
+| `SetCvarFlags()` | 设置CVar标志 / Set CVar flags |
+| `GetCvarInfo()` | 获取CVar信息 / Get CVar information |
+| `HookCvarChange()` | 钩子CVar变化 / Hook CVar change |
+| `UnhookCvarChange()` | 取消钩子CVar变化 / Unhook CVar change |
+| `SetCvarBounds()` | 设置CVar边界 / Set CVar bounds |
+| `GetCvarBounds()` | 获取CVar边界 / Get CVar bounds |
+
 ## 高级示例 / Advanced Examples
 
 ### 命令执行 / Command Execution

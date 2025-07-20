@@ -261,6 +261,122 @@ CSHARP_EXPORT bool CSHARP_CALL GetConnectedPlayers(int* playerIds, int maxPlayer
 CSHARP_EXPORT bool CSHARP_CALL KickPlayer(int clientId, const char* reason);
 CSHARP_EXPORT bool CSHARP_CALL SlayPlayer(int clientId);
 
+// ========== 实体管理接口 / Entity Management Interfaces ==========
+
+// Entity creation and removal
+CSHARP_EXPORT int CSHARP_CALL CreateEntity(const char* className);
+CSHARP_EXPORT bool CSHARP_CALL RemoveEntity(int entityId);
+CSHARP_EXPORT int CSHARP_CALL GetEntityCount();
+
+// Entity finding functions
+CSHARP_EXPORT int CSHARP_CALL FindEntityByClassName(int startEntity, const char* className);
+CSHARP_EXPORT int CSHARP_CALL FindEntityByTargetName(int startEntity, const char* targetName);
+CSHARP_EXPORT int CSHARP_CALL FindEntityInSphere(int startEntity, const float* origin, float radius);
+
+// Entity property getters
+CSHARP_EXPORT int CSHARP_CALL GetEntityInt(int entityId, const char* property);
+CSHARP_EXPORT float CSHARP_CALL GetEntityFloat(int entityId, const char* property);
+CSHARP_EXPORT bool CSHARP_CALL GetEntityString(int entityId, const char* property, char* buffer, int bufferSize);
+CSHARP_EXPORT bool CSHARP_CALL GetEntityVector(int entityId, const char* property, float* vector);
+
+// Entity property setters
+CSHARP_EXPORT bool CSHARP_CALL SetEntityInt(int entityId, const char* property, int value);
+CSHARP_EXPORT bool CSHARP_CALL SetEntityFloat(int entityId, const char* property, float value);
+CSHARP_EXPORT bool CSHARP_CALL SetEntityString(int entityId, const char* property, const char* value);
+CSHARP_EXPORT bool CSHARP_CALL SetEntityVector(int entityId, const char* property, const float* vector);
+
+// Entity utility functions
+CSHARP_EXPORT bool CSHARP_CALL SetEntityOrigin(int entityId, const float* origin);
+CSHARP_EXPORT bool CSHARP_CALL SetEntitySize(int entityId, const float* mins, const float* maxs);
+CSHARP_EXPORT bool CSHARP_CALL SetEntityModel(int entityId, const char* model);
+
+// ========== 消息系统接口 / Message System Interfaces ==========
+
+// Message callback delegate signature
+typedef void (CSHARP_CALL *CSharpMessageCallback)(int msgType, int msgDest, int entityId);
+
+// Message registration and management
+CSHARP_EXPORT int CSHARP_CALL RegisterMessage(int msgId, CSharpMessageCallback callback);
+CSHARP_EXPORT bool CSHARP_CALL UnregisterMessage(int msgId, int msgHandle);
+CSHARP_EXPORT bool CSHARP_CALL SetMessageBlock(int msgId, int blockType);
+CSHARP_EXPORT int CSHARP_CALL GetMessageBlock(int msgId);
+
+// Message sending functions
+CSHARP_EXPORT bool CSHARP_CALL MessageBegin(int msgDest, int msgType, const float* origin, int entityId);
+CSHARP_EXPORT void CSHARP_CALL MessageEnd();
+
+// Message writing functions
+CSHARP_EXPORT void CSHARP_CALL WriteByte(int value);
+CSHARP_EXPORT void CSHARP_CALL WriteChar(int value);
+CSHARP_EXPORT void CSHARP_CALL WriteShort(int value);
+CSHARP_EXPORT void CSHARP_CALL WriteLong(int value);
+CSHARP_EXPORT void CSHARP_CALL WriteAngle(float value);
+CSHARP_EXPORT void CSHARP_CALL WriteCoord(float value);
+CSHARP_EXPORT void CSHARP_CALL WriteString(const char* value);
+CSHARP_EXPORT void CSHARP_CALL WriteEntity(int value);
+
+// Engine message functions
+CSHARP_EXPORT bool CSHARP_CALL EngineMessageBegin(int msgDest, int msgType, const float* origin, int entityId);
+CSHARP_EXPORT void CSHARP_CALL EngineMessageEnd();
+CSHARP_EXPORT void CSHARP_CALL EngineWriteByte(int value);
+CSHARP_EXPORT void CSHARP_CALL EngineWriteChar(int value);
+CSHARP_EXPORT void CSHARP_CALL EngineWriteShort(int value);
+CSHARP_EXPORT void CSHARP_CALL EngineWriteLong(int value);
+CSHARP_EXPORT void CSHARP_CALL EngineWriteAngle(float value);
+CSHARP_EXPORT void CSHARP_CALL EngineWriteCoord(float value);
+CSHARP_EXPORT void CSHARP_CALL EngineWriteString(const char* value);
+CSHARP_EXPORT void CSHARP_CALL EngineWriteEntity(int value);
+
+// Message utility functions
+CSHARP_EXPORT int CSHARP_CALL GetUserMessageId(const char* msgName);
+CSHARP_EXPORT bool CSHARP_CALL GetUserMessageName(int msgId, char* buffer, int bufferSize);
+
+// ========== CVars系统接口 / CVars System Interfaces ==========
+
+// CVar callback delegate signature
+typedef void (CSHARP_CALL *CSharpCvarCallback)(const char* cvarName, const char* oldValue, const char* newValue);
+
+// CVar information structure
+struct CSharpCvarInfo
+{
+    char name[64];
+    char value[256];
+    char defaultValue[256];
+    char description[256];
+    int flags;
+    float floatValue;
+    bool hasMin;
+    float minValue;
+    bool hasMax;
+    float maxValue;
+};
+
+// CVar creation and registration
+CSHARP_EXPORT bool CSHARP_CALL CreateCvar(const char* name, const char* value, int flags, const char* description, bool hasMin, float minValue, bool hasMax, float maxValue);
+CSHARP_EXPORT bool CSHARP_CALL RegisterCvar(const char* name, const char* value, int flags, float floatValue);
+CSHARP_EXPORT bool CSHARP_CALL CvarExists(const char* name);
+
+// CVar value getters
+CSHARP_EXPORT bool CSHARP_CALL GetCvarString(const char* name, char* buffer, int bufferSize);
+CSHARP_EXPORT int CSHARP_CALL GetCvarInt(const char* name);
+CSHARP_EXPORT float CSHARP_CALL GetCvarFloat(const char* name);
+CSHARP_EXPORT int CSHARP_CALL GetCvarFlags(const char* name);
+
+// CVar value setters
+CSHARP_EXPORT bool CSHARP_CALL SetCvarString(const char* name, const char* value);
+CSHARP_EXPORT bool CSHARP_CALL SetCvarInt(const char* name, int value);
+CSHARP_EXPORT bool CSHARP_CALL SetCvarFloat(const char* name, float value);
+CSHARP_EXPORT bool CSHARP_CALL SetCvarFlags(const char* name, int flags);
+
+// CVar information and management
+CSHARP_EXPORT bool CSHARP_CALL GetCvarInfo(const char* name, CSharpCvarInfo* outInfo);
+CSHARP_EXPORT int CSHARP_CALL HookCvarChange(const char* name, CSharpCvarCallback callback);
+CSHARP_EXPORT bool CSHARP_CALL UnhookCvarChange(int hookId);
+
+// CVar bounds management
+CSHARP_EXPORT bool CSHARP_CALL SetCvarBounds(const char* name, bool hasMin, float minValue, bool hasMax, float maxValue);
+CSHARP_EXPORT bool CSHARP_CALL GetCvarBounds(const char* name, bool* hasMin, float* minValue, bool* hasMax, float* maxValue);
+
 // Internal bridge management
 namespace CSharpBridge
 {
@@ -300,6 +416,24 @@ namespace CSharpBridge
         int amxForwardId;
     };
 
+    // Message callback storage
+    struct MessageCallbackInfo
+    {
+        CSharpMessageCallback messageCallback;
+        int msgId;
+        int msgHandle;
+        int amxForwardId;
+    };
+
+    // CVar callback storage
+    struct CvarCallbackInfo
+    {
+        CSharpCvarCallback cvarCallback;
+        ke::AString cvarName;
+        int hookId;
+        int amxForwardId;
+    };
+
     // Bridge state management
     void Initialize();
     void Cleanup();
@@ -318,10 +452,14 @@ namespace CSharpBridge
     extern ke::Vector<ke::AString> g_menuIds;
     extern ke::Vector<EventCallbackInfo*> g_eventCallbacks;
     extern ke::Vector<ForwardCallbackInfo*> g_forwardCallbacks;
+    extern ke::Vector<MessageCallbackInfo*> g_messageCallbacks;
+    extern ke::Vector<CvarCallbackInfo*> g_cvarCallbacks;
     extern int g_nextCommandId;
     extern int g_nextMenuId;
     extern int g_nextEventHandle;
     extern int g_nextForwardId;
+    extern int g_nextMessageHandle;
+    extern int g_nextCvarHookId;
     extern bool g_initialized;
 
     // Event system helpers
@@ -333,6 +471,14 @@ namespace CSharpBridge
     int CreateForwardInternal(const char* forwardName, int execType,
                              const int* paramTypes, int numParams);
     int HandleForwardCallback(int forwardId, int numParams);
+
+    // Message system helpers
+    int RegisterMessageInternal(int msgId, CSharpMessageCallback callback);
+    void HandleMessageCallback(int msgType, int msgDest, int entityId);
+
+    // CVar system helpers
+    int HookCvarChangeInternal(const char* name, CSharpCvarCallback callback);
+    void HandleCvarCallback(const char* cvarName, const char* oldValue, const char* newValue);
 }
 
 #endif // CSHARP_BRIDGE_H

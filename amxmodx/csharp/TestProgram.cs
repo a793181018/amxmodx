@@ -203,7 +203,26 @@ namespace AmxModX.TestApp
                 throw;
             }
 
-            // 测试6: 多线程安全性 / Test 6: Thread safety
+            // 测试6: 实体管理、消息系统和CVars系统 / Test 6: Entity Management, Message System, and CVars System
+            PrintTest("Test 6: Entity, Message, and CVar Systems");
+            try
+            {
+                EntityMessageCvarExample.Initialize();
+                PrintSuccess("✓ Entity, Message, and CVar example initialized");
+
+                EntityMessageCvarExample.RunFullDemo();
+                PrintSuccess("✓ Entity, Message, and CVar demo completed");
+
+                EntityMessageCvarExample.Cleanup();
+                PrintSuccess("✓ Test 6 completed successfully");
+            }
+            catch (Exception ex)
+            {
+                PrintError($"✗ Entity, Message, and CVar test failed: {ex.Message}");
+                throw;
+            }
+
+            // 测试7: 多线程安全性 / Test 7: Thread safety
             if (options.TestThreadSafety)
             {
                 await RunThreadSafetyTests();

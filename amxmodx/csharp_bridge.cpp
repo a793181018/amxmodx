@@ -38,10 +38,14 @@ namespace CSharpBridge
     ke::Vector<ke::AString> g_menuIds;
     ke::Vector<EventCallbackInfo*> g_eventCallbacks;
     ke::Vector<ForwardCallbackInfo*> g_forwardCallbacks;
+    ke::Vector<MessageCallbackInfo*> g_messageCallbacks;
+    ke::Vector<CvarCallbackInfo*> g_cvarCallbacks;
     int g_nextCommandId = 1;
     int g_nextMenuId = 1;
     int g_nextEventHandle = 1;
     int g_nextForwardId = 1;
+    int g_nextMessageHandle = 1;
+    int g_nextCvarHookId = 1;
     bool g_initialized = false;
 
     // Current event context for parameter reading
@@ -186,7 +190,21 @@ namespace CSharpBridge
             delete g_forwardCallbacks[i];
         }
         g_forwardCallbacks.clear();
-        
+
+        // Clean up message callbacks
+        for (size_t i = 0; i < g_messageCallbacks.length(); i++)
+        {
+            delete g_messageCallbacks[i];
+        }
+        g_messageCallbacks.clear();
+
+        // Clean up CVar callbacks
+        for (size_t i = 0; i < g_cvarCallbacks.length(); i++)
+        {
+            delete g_cvarCallbacks[i];
+        }
+        g_cvarCallbacks.clear();
+
         g_initialized = false;
         LOCK_DESTROY();
     }
@@ -1831,4 +1849,1500 @@ CSHARP_EXPORT bool CSHARP_CALL SlayPlayer(int clientId)
     MDLL_Killed(pPlayer->pEdict, nullptr, 0);
 
     return true;
+}
+
+// ========== 实体管理接口实现 / Entity Management Interface Implementation ==========
+
+CSHARP_EXPORT int CSHARP_CALL CreateEntity(const char* className)
+{
+    if (!CSharpBridge::g_initialized || !className)
+        return 0;
+
+    LOCK_ENTER();
+
+    try
+    {
+        // Create named entity using engine function
+        int iszClass = ALLOC_STRING(className);
+        edict_t* pEnt = CREATE_NAMED_ENTITY(iszClass);
+
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return 0;
+        }
+
+        int entityId = ENTINDEX(pEnt);
+        LOCK_LEAVE();
+        return entityId;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL RemoveEntity(int entityId)
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        // Validate entity ID
+        if (entityId <= gpGlobals->maxClients || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Remove the entity
+        REMOVE_ENTITY(pEnt);
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetEntityCount()
+{
+    if (!CSharpBridge::g_initialized)
+        return 0;
+
+    return NUMBER_OF_ENTITIES();
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityByClassName(int startEntity, const char* className)
+{
+    if (!CSharpBridge::g_initialized || !className)
+        return 0;
+
+    LOCK_ENTER();
+
+    try
+    {
+        edict_t* pStart = (startEntity > 0) ? INDEXENT(startEntity) : nullptr;
+        edict_t* pFound = FIND_ENTITY_BY_STRING(pStart, "classname", className);
+
+        if (FNullEnt(pFound))
+        {
+            LOCK_LEAVE();
+            return 0;
+        }
+
+        int entityId = ENTINDEX(pFound);
+        LOCK_LEAVE();
+        return entityId;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityByTargetName(int startEntity, const char* targetName)
+{
+    if (!CSharpBridge::g_initialized || !targetName)
+        return 0;
+
+    LOCK_ENTER();
+
+    try
+    {
+        edict_t* pStart = (startEntity > 0) ? INDEXENT(startEntity) : nullptr;
+        edict_t* pFound = FIND_ENTITY_BY_STRING(pStart, "targetname", targetName);
+
+        if (FNullEnt(pFound))
+        {
+            LOCK_LEAVE();
+            return 0;
+        }
+
+        int entityId = ENTINDEX(pFound);
+        LOCK_LEAVE();
+        return entityId;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityInSphere(int startEntity, const float* origin, float radius)
+{
+    if (!CSharpBridge::g_initialized || !origin)
+        return 0;
+
+    LOCK_ENTER();
+
+    try
+    {
+        edict_t* pStart = (startEntity > 0) ? INDEXENT(startEntity) : nullptr;
+        Vector vecOrigin(origin[0], origin[1], origin[2]);
+        edict_t* pFound = FIND_ENTITY_IN_SPHERE(pStart, vecOrigin, radius);
+
+        if (FNullEnt(pFound))
+        {
+            LOCK_LEAVE();
+            return 0;
+        }
+
+        int entityId = ENTINDEX(pFound);
+        LOCK_LEAVE();
+        return entityId;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetEntityInt(int entityId, const char* property)
+{
+    if (!CSharpBridge::g_initialized || !property)
+        return 0;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return 0;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return 0;
+        }
+
+        // Map common property names to entity variables
+        int result = 0;
+        if (strcmp(property, "health") == 0)
+            result = (int)pEnt->v.health;
+        else if (strcmp(property, "armor") == 0)
+            result = (int)pEnt->v.armorvalue;
+        else if (strcmp(property, "team") == 0)
+            result = pEnt->v.team;
+        else if (strcmp(property, "playerclass") == 0)
+            result = pEnt->v.playerclass;
+        else if (strcmp(property, "deadflag") == 0)
+            result = pEnt->v.deadflag;
+        else if (strcmp(property, "flags") == 0)
+            result = pEnt->v.flags;
+        else if (strcmp(property, "effects") == 0)
+            result = pEnt->v.effects;
+        else if (strcmp(property, "solid") == 0)
+            result = pEnt->v.solid;
+        else if (strcmp(property, "movetype") == 0)
+            result = pEnt->v.movetype;
+        else if (strcmp(property, "spawnflags") == 0)
+            result = pEnt->v.spawnflags;
+
+        LOCK_LEAVE();
+        return result;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityInt(int entityId, const char* property, int value)
+{
+    if (!CSharpBridge::g_initialized || !property)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Map common property names to entity variables
+        bool success = true;
+        if (strcmp(property, "health") == 0)
+            pEnt->v.health = (float)value;
+        else if (strcmp(property, "armor") == 0)
+            pEnt->v.armorvalue = (float)value;
+        else if (strcmp(property, "team") == 0)
+            pEnt->v.team = value;
+        else if (strcmp(property, "playerclass") == 0)
+            pEnt->v.playerclass = value;
+        else if (strcmp(property, "deadflag") == 0)
+            pEnt->v.deadflag = value;
+        else if (strcmp(property, "flags") == 0)
+            pEnt->v.flags = value;
+        else if (strcmp(property, "effects") == 0)
+            pEnt->v.effects = value;
+        else if (strcmp(property, "solid") == 0)
+            pEnt->v.solid = value;
+        else if (strcmp(property, "movetype") == 0)
+            pEnt->v.movetype = value;
+        else if (strcmp(property, "spawnflags") == 0)
+            pEnt->v.spawnflags = value;
+        else
+            success = false;
+
+        LOCK_LEAVE();
+        return success;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT float CSHARP_CALL GetEntityFloat(int entityId, const char* property)
+{
+    if (!CSharpBridge::g_initialized || !property)
+        return 0.0f;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return 0.0f;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return 0.0f;
+        }
+
+        // Map common property names to entity variables
+        float result = 0.0f;
+        if (strcmp(property, "health") == 0)
+            result = pEnt->v.health;
+        else if (strcmp(property, "armor") == 0)
+            result = pEnt->v.armorvalue;
+        else if (strcmp(property, "speed") == 0)
+            result = pEnt->v.maxspeed;
+        else if (strcmp(property, "gravity") == 0)
+            result = pEnt->v.gravity;
+        else if (strcmp(property, "friction") == 0)
+            result = pEnt->v.friction;
+        else if (strcmp(property, "framerate") == 0)
+            result = pEnt->v.framerate;
+        else if (strcmp(property, "scale") == 0)
+            result = pEnt->v.scale;
+        else if (strcmp(property, "takedamage") == 0)
+            result = pEnt->v.takedamage;
+
+        LOCK_LEAVE();
+        return result;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return 0.0f;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityFloat(int entityId, const char* property, float value)
+{
+    if (!CSharpBridge::g_initialized || !property)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Map common property names to entity variables
+        bool success = true;
+        if (strcmp(property, "health") == 0)
+            pEnt->v.health = value;
+        else if (strcmp(property, "armor") == 0)
+            pEnt->v.armorvalue = value;
+        else if (strcmp(property, "speed") == 0)
+            pEnt->v.maxspeed = value;
+        else if (strcmp(property, "gravity") == 0)
+            pEnt->v.gravity = value;
+        else if (strcmp(property, "friction") == 0)
+            pEnt->v.friction = value;
+        else if (strcmp(property, "framerate") == 0)
+            pEnt->v.framerate = value;
+        else if (strcmp(property, "scale") == 0)
+            pEnt->v.scale = value;
+        else if (strcmp(property, "takedamage") == 0)
+            pEnt->v.takedamage = value;
+        else
+            success = false;
+
+        LOCK_LEAVE();
+        return success;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetEntityString(int entityId, const char* property, char* buffer, int bufferSize)
+{
+    if (!CSharpBridge::g_initialized || !property || !buffer || bufferSize <= 0)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Map common property names to entity variables
+        const char* result = nullptr;
+        if (strcmp(property, "classname") == 0)
+            result = STRING(pEnt->v.classname);
+        else if (strcmp(property, "targetname") == 0)
+            result = STRING(pEnt->v.targetname);
+        else if (strcmp(property, "target") == 0)
+            result = STRING(pEnt->v.target);
+        else if (strcmp(property, "model") == 0)
+            result = STRING(pEnt->v.model);
+        else if (strcmp(property, "netname") == 0)
+            result = STRING(pEnt->v.netname);
+        else if (strcmp(property, "message") == 0)
+            result = STRING(pEnt->v.message);
+
+        if (result)
+        {
+            strncpy(buffer, result, bufferSize - 1);
+            buffer[bufferSize - 1] = '\0';
+            LOCK_LEAVE();
+            return true;
+        }
+
+        LOCK_LEAVE();
+        return false;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityString(int entityId, const char* property, const char* value)
+{
+    if (!CSharpBridge::g_initialized || !property || !value)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Map common property names to entity variables
+        bool success = true;
+        if (strcmp(property, "classname") == 0)
+            pEnt->v.classname = ALLOC_STRING(value);
+        else if (strcmp(property, "targetname") == 0)
+            pEnt->v.targetname = ALLOC_STRING(value);
+        else if (strcmp(property, "target") == 0)
+            pEnt->v.target = ALLOC_STRING(value);
+        else if (strcmp(property, "model") == 0)
+            pEnt->v.model = ALLOC_STRING(value);
+        else if (strcmp(property, "netname") == 0)
+            pEnt->v.netname = ALLOC_STRING(value);
+        else if (strcmp(property, "message") == 0)
+            pEnt->v.message = ALLOC_STRING(value);
+        else
+            success = false;
+
+        LOCK_LEAVE();
+        return success;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetEntityVector(int entityId, const char* property, float* vector)
+{
+    if (!CSharpBridge::g_initialized || !property || !vector)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Map common property names to entity variables
+        bool success = true;
+        if (strcmp(property, "origin") == 0)
+        {
+            vector[0] = pEnt->v.origin.x;
+            vector[1] = pEnt->v.origin.y;
+            vector[2] = pEnt->v.origin.z;
+        }
+        else if (strcmp(property, "angles") == 0)
+        {
+            vector[0] = pEnt->v.angles.x;
+            vector[1] = pEnt->v.angles.y;
+            vector[2] = pEnt->v.angles.z;
+        }
+        else if (strcmp(property, "velocity") == 0)
+        {
+            vector[0] = pEnt->v.velocity.x;
+            vector[1] = pEnt->v.velocity.y;
+            vector[2] = pEnt->v.velocity.z;
+        }
+        else if (strcmp(property, "mins") == 0)
+        {
+            vector[0] = pEnt->v.mins.x;
+            vector[1] = pEnt->v.mins.y;
+            vector[2] = pEnt->v.mins.z;
+        }
+        else if (strcmp(property, "maxs") == 0)
+        {
+            vector[0] = pEnt->v.maxs.x;
+            vector[1] = pEnt->v.maxs.y;
+            vector[2] = pEnt->v.maxs.z;
+        }
+        else
+            success = false;
+
+        LOCK_LEAVE();
+        return success;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityVector(int entityId, const char* property, const float* vector)
+{
+    if (!CSharpBridge::g_initialized || !property || !vector)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Map common property names to entity variables
+        bool success = true;
+        if (strcmp(property, "origin") == 0)
+        {
+            pEnt->v.origin.x = vector[0];
+            pEnt->v.origin.y = vector[1];
+            pEnt->v.origin.z = vector[2];
+        }
+        else if (strcmp(property, "angles") == 0)
+        {
+            pEnt->v.angles.x = vector[0];
+            pEnt->v.angles.y = vector[1];
+            pEnt->v.angles.z = vector[2];
+        }
+        else if (strcmp(property, "velocity") == 0)
+        {
+            pEnt->v.velocity.x = vector[0];
+            pEnt->v.velocity.y = vector[1];
+            pEnt->v.velocity.z = vector[2];
+        }
+        else if (strcmp(property, "mins") == 0)
+        {
+            pEnt->v.mins.x = vector[0];
+            pEnt->v.mins.y = vector[1];
+            pEnt->v.mins.z = vector[2];
+        }
+        else if (strcmp(property, "maxs") == 0)
+        {
+            pEnt->v.maxs.x = vector[0];
+            pEnt->v.maxs.y = vector[1];
+            pEnt->v.maxs.z = vector[2];
+        }
+        else
+            success = false;
+
+        LOCK_LEAVE();
+        return success;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityOrigin(int entityId, const float* origin)
+{
+    if (!CSharpBridge::g_initialized || !origin)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        Vector vecOrigin(origin[0], origin[1], origin[2]);
+        SET_ORIGIN(pEnt, vecOrigin);
+
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntitySize(int entityId, const float* mins, const float* maxs)
+{
+    if (!CSharpBridge::g_initialized || !mins || !maxs)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        Vector vecMins(mins[0], mins[1], mins[2]);
+        Vector vecMaxs(maxs[0], maxs[1], maxs[2]);
+        SET_SIZE(pEnt, vecMins, vecMaxs);
+
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityModel(int entityId, const char* model)
+{
+    if (!CSharpBridge::g_initialized || !model)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (entityId <= 0 || entityId > gpGlobals->maxEntities)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        SET_MODEL(pEnt, model);
+
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+// ========== 消息系统接口实现 / Message System Interface Implementation ==========
+
+// Message state tracking
+static bool g_messageStarted = false;
+static int g_currentMsgType = 0;
+static int g_currentMsgDest = 0;
+
+CSHARP_EXPORT int CSHARP_CALL RegisterMessage(int msgId, CSharpMessageCallback callback)
+{
+    if (!CSharpBridge::g_initialized || !callback)
+        return 0;
+
+    LOCK_ENTER();
+
+    try
+    {
+        MessageCallbackInfo* info = new MessageCallbackInfo();
+        info->messageCallback = callback;
+        info->msgId = msgId;
+        info->msgHandle = CSharpBridge::g_nextMessageHandle++;
+        info->amxForwardId = -1; // Not used for message callbacks
+
+        CSharpBridge::g_messageCallbacks.append(info);
+
+        LOCK_LEAVE();
+        return info->msgHandle;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL UnregisterMessage(int msgId, int msgHandle)
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        for (size_t i = 0; i < CSharpBridge::g_messageCallbacks.length(); i++)
+        {
+            MessageCallbackInfo* info = CSharpBridge::g_messageCallbacks[i];
+            if (info && info->msgId == msgId && info->msgHandle == msgHandle)
+            {
+                delete info;
+                CSharpBridge::g_messageCallbacks.remove(i);
+                LOCK_LEAVE();
+                return true;
+            }
+        }
+
+        LOCK_LEAVE();
+        return false;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetMessageBlock(int msgId, int blockType)
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    // Use AMX Mod X's message blocking system
+    // blockType: 0 = not blocked, 1 = blocked, 2 = once
+    return g_msgBlocks.SetBlock(msgId, blockType) != 0;
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetMessageBlock(int msgId)
+{
+    if (!CSharpBridge::g_initialized)
+        return 0;
+
+    return g_msgBlocks.GetBlock(msgId);
+}
+
+CSHARP_EXPORT bool CSHARP_CALL MessageBegin(int msgDest, int msgType, const float* origin, int entityId)
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (g_messageStarted)
+        {
+            LOCK_LEAVE();
+            return false; // Message already started
+        }
+
+        edict_t* pEdict = nullptr;
+        if (entityId > 0 && entityId <= gpGlobals->maxClients)
+        {
+            pEdict = INDEXENT(entityId);
+            if (FNullEnt(pEdict))
+                pEdict = nullptr;
+        }
+
+        Vector vecOrigin;
+        if (origin)
+        {
+            vecOrigin.x = origin[0];
+            vecOrigin.y = origin[1];
+            vecOrigin.z = origin[2];
+        }
+
+        MESSAGE_BEGIN(msgDest, msgType, origin ? &vecOrigin : nullptr, pEdict);
+
+        g_messageStarted = true;
+        g_currentMsgType = msgType;
+        g_currentMsgDest = msgDest;
+
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT void CSHARP_CALL MessageEnd()
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    LOCK_ENTER();
+
+    try
+    {
+        MESSAGE_END();
+        g_messageStarted = false;
+        g_currentMsgType = 0;
+        g_currentMsgDest = 0;
+    }
+    catch (...)
+    {
+        // Ignore exceptions in cleanup
+    }
+
+    LOCK_LEAVE();
+}
+
+// Message writing functions
+CSHARP_EXPORT void CSHARP_CALL WriteByte(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    WRITE_BYTE(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL WriteChar(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    WRITE_CHAR(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL WriteShort(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    WRITE_SHORT(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL WriteLong(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    WRITE_LONG(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL WriteAngle(float value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    WRITE_ANGLE(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL WriteCoord(float value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    WRITE_COORD(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL WriteString(const char* value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted || !value)
+        return;
+
+    WRITE_STRING(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL WriteEntity(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    WRITE_ENTITY(value);
+}
+
+// Engine message functions (for engine messages)
+CSHARP_EXPORT bool CSHARP_CALL EngineMessageBegin(int msgDest, int msgType, const float* origin, int entityId)
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        if (g_messageStarted)
+        {
+            LOCK_LEAVE();
+            return false; // Message already started
+        }
+
+        edict_t* pEdict = nullptr;
+        if (entityId > 0 && entityId <= gpGlobals->maxClients)
+        {
+            pEdict = INDEXENT(entityId);
+            if (FNullEnt(pEdict))
+                pEdict = nullptr;
+        }
+
+        Vector vecOrigin;
+        if (origin)
+        {
+            vecOrigin.x = origin[0];
+            vecOrigin.y = origin[1];
+            vecOrigin.z = origin[2];
+        }
+
+        (*g_engfuncs.pfnMessageBegin)(msgDest, msgType, origin ? &vecOrigin : nullptr, pEdict);
+
+        g_messageStarted = true;
+        g_currentMsgType = msgType;
+        g_currentMsgDest = msgDest;
+
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT void CSHARP_CALL EngineMessageEnd()
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    LOCK_ENTER();
+
+    try
+    {
+        (*g_engfuncs.pfnMessageEnd)();
+        g_messageStarted = false;
+        g_currentMsgType = 0;
+        g_currentMsgDest = 0;
+    }
+    catch (...)
+    {
+        // Ignore exceptions in cleanup
+    }
+
+    LOCK_LEAVE();
+}
+
+// Engine message writing functions
+CSHARP_EXPORT void CSHARP_CALL EngineWriteByte(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    (*g_engfuncs.pfnWriteByte)(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL EngineWriteChar(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    (*g_engfuncs.pfnWriteChar)(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL EngineWriteShort(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    (*g_engfuncs.pfnWriteShort)(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL EngineWriteLong(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    (*g_engfuncs.pfnWriteLong)(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL EngineWriteAngle(float value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    (*g_engfuncs.pfnWriteAngle)(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL EngineWriteCoord(float value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    (*g_engfuncs.pfnWriteCoord)(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL EngineWriteString(const char* value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted || !value)
+        return;
+
+    (*g_engfuncs.pfnWriteString)(value);
+}
+
+CSHARP_EXPORT void CSHARP_CALL EngineWriteEntity(int value)
+{
+    if (!CSharpBridge::g_initialized || !g_messageStarted)
+        return;
+
+    (*g_engfuncs.pfnWriteEntity)(value);
+}
+
+// Message utility functions
+CSHARP_EXPORT int CSHARP_CALL GetUserMessageId(const char* msgName)
+{
+    if (!CSharpBridge::g_initialized || !msgName)
+        return 0;
+
+    return GET_USER_MSG_ID(PLID, msgName, nullptr);
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetUserMessageName(int msgId, char* buffer, int bufferSize)
+{
+    if (!CSharpBridge::g_initialized || !buffer || bufferSize <= 0)
+        return false;
+
+    const char* msgName = GET_USER_MSG_NAME(PLID, msgId, nullptr);
+    if (msgName)
+    {
+        strncpy(buffer, msgName, bufferSize - 1);
+        buffer[bufferSize - 1] = '\0';
+        return true;
+    }
+
+    return false;
+}
+
+// ========== CVars系统接口实现 / CVars System Interface Implementation ==========
+
+CSHARP_EXPORT bool CSHARP_CALL CreateCvar(const char* name, const char* value, int flags, const char* description, bool hasMin, float minValue, bool hasMax, float maxValue)
+{
+    if (!CSharpBridge::g_initialized || !name || !value)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        // Create the CVar using engine function
+        cvar_t* pCvar = CVAR_GET_POINTER(name);
+        if (pCvar)
+        {
+            // CVar already exists
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Register new CVar
+        CVAR_REGISTER(name, value, flags);
+
+        // Set bounds if specified (AMX Mod X specific)
+        if (hasMin || hasMax)
+        {
+            // Note: Bounds setting would require AMX Mod X specific implementation
+            // This is a simplified version
+        }
+
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL RegisterCvar(const char* name, const char* value, int flags, float floatValue)
+{
+    if (!CSharpBridge::g_initialized || !name || !value)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        CVAR_REGISTER(name, value, flags);
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL CvarExists(const char* name)
+{
+    if (!CSharpBridge::g_initialized || !name)
+        return false;
+
+    cvar_t* pCvar = CVAR_GET_POINTER(name);
+    return pCvar != nullptr;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetCvarString(const char* name, char* buffer, int bufferSize)
+{
+    if (!CSharpBridge::g_initialized || !name || !buffer || bufferSize <= 0)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        const char* value = CVAR_GET_STRING(name);
+        if (value)
+        {
+            strncpy(buffer, value, bufferSize - 1);
+            buffer[bufferSize - 1] = '\0';
+            LOCK_LEAVE();
+            return true;
+        }
+
+        LOCK_LEAVE();
+        return false;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetCvarInt(const char* name)
+{
+    if (!CSharpBridge::g_initialized || !name)
+        return 0;
+
+    return (int)CVAR_GET_FLOAT(name);
+}
+
+CSHARP_EXPORT float CSHARP_CALL GetCvarFloat(const char* name)
+{
+    if (!CSharpBridge::g_initialized || !name)
+        return 0.0f;
+
+    return CVAR_GET_FLOAT(name);
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetCvarFlags(const char* name)
+{
+    if (!CSharpBridge::g_initialized || !name)
+        return 0;
+
+    cvar_t* pCvar = CVAR_GET_POINTER(name);
+    return pCvar ? pCvar->flags : 0;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetCvarString(const char* name, const char* value)
+{
+    if (!CSharpBridge::g_initialized || !name || !value)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        CVAR_SET_STRING(name, value);
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetCvarInt(const char* name, int value)
+{
+    if (!CSharpBridge::g_initialized || !name)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        CVAR_SET_FLOAT(name, (float)value);
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetCvarFloat(const char* name, float value)
+{
+    if (!CSharpBridge::g_initialized || !name)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        CVAR_SET_FLOAT(name, value);
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetCvarFlags(const char* name, int flags)
+{
+    if (!CSharpBridge::g_initialized || !name)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        cvar_t* pCvar = CVAR_GET_POINTER(name);
+        if (pCvar)
+        {
+            pCvar->flags = flags;
+            LOCK_LEAVE();
+            return true;
+        }
+
+        LOCK_LEAVE();
+        return false;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetCvarInfo(const char* name, CSharpCvarInfo* outInfo)
+{
+    if (!CSharpBridge::g_initialized || !name || !outInfo)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        cvar_t* pCvar = CVAR_GET_POINTER(name);
+        if (!pCvar)
+        {
+            LOCK_LEAVE();
+            return false;
+        }
+
+        // Fill the info structure
+        strncpy(outInfo->name, pCvar->name ? pCvar->name : "", sizeof(outInfo->name) - 1);
+        outInfo->name[sizeof(outInfo->name) - 1] = '\0';
+
+        strncpy(outInfo->value, pCvar->string ? pCvar->string : "", sizeof(outInfo->value) - 1);
+        outInfo->value[sizeof(outInfo->value) - 1] = '\0';
+
+        // Default value and description would need AMX Mod X specific implementation
+        strncpy(outInfo->defaultValue, pCvar->string ? pCvar->string : "", sizeof(outInfo->defaultValue) - 1);
+        outInfo->defaultValue[sizeof(outInfo->defaultValue) - 1] = '\0';
+
+        strcpy(outInfo->description, ""); // Not available in basic cvar_t
+
+        outInfo->flags = pCvar->flags;
+        outInfo->floatValue = pCvar->value;
+        outInfo->hasMin = false; // Would need AMX Mod X specific implementation
+        outInfo->minValue = 0.0f;
+        outInfo->hasMax = false;
+        outInfo->maxValue = 0.0f;
+
+        LOCK_LEAVE();
+        return true;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL HookCvarChange(const char* name, CSharpCvarCallback callback)
+{
+    if (!CSharpBridge::g_initialized || !name || !callback)
+        return 0;
+
+    LOCK_ENTER();
+
+    try
+    {
+        CvarCallbackInfo* info = new CvarCallbackInfo();
+        info->cvarCallback = callback;
+        info->cvarName = ke::AString(name);
+        info->hookId = CSharpBridge::g_nextCvarHookId++;
+        info->amxForwardId = -1; // Not used for CVar callbacks
+
+        CSharpBridge::g_cvarCallbacks.append(info);
+
+        LOCK_LEAVE();
+        return info->hookId;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL UnhookCvarChange(int hookId)
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    LOCK_ENTER();
+
+    try
+    {
+        for (size_t i = 0; i < CSharpBridge::g_cvarCallbacks.length(); i++)
+        {
+            CvarCallbackInfo* info = CSharpBridge::g_cvarCallbacks[i];
+            if (info && info->hookId == hookId)
+            {
+                delete info;
+                CSharpBridge::g_cvarCallbacks.remove(i);
+                LOCK_LEAVE();
+                return true;
+            }
+        }
+
+        LOCK_LEAVE();
+        return false;
+    }
+    catch (...)
+    {
+        LOCK_LEAVE();
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetCvarBounds(const char* name, bool hasMin, float minValue, bool hasMax, float maxValue)
+{
+    if (!CSharpBridge::g_initialized || !name)
+        return false;
+
+    // This would require AMX Mod X specific implementation
+    // For now, just return success if the CVar exists
+    cvar_t* pCvar = CVAR_GET_POINTER(name);
+    return pCvar != nullptr;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetCvarBounds(const char* name, bool* hasMin, float* minValue, bool* hasMax, float* maxValue)
+{
+    if (!CSharpBridge::g_initialized || !name || !hasMin || !minValue || !hasMax || !maxValue)
+        return false;
+
+    // This would require AMX Mod X specific implementation
+    // For now, just return no bounds if the CVar exists
+    cvar_t* pCvar = CVAR_GET_POINTER(name);
+    if (pCvar)
+    {
+        *hasMin = false;
+        *minValue = 0.0f;
+        *hasMax = false;
+        *maxValue = 0.0f;
+        return true;
+    }
+
+    return false;
+}
+
+// Helper functions for callback handling
+namespace CSharpBridge
+{
+    void HandleMessageCallback(int msgType, int msgDest, int entityId)
+    {
+        LOCK_ENTER();
+
+        try
+        {
+            for (size_t i = 0; i < g_messageCallbacks.length(); i++)
+            {
+                MessageCallbackInfo* info = g_messageCallbacks[i];
+                if (info && info->msgId == msgType)
+                {
+                    info->messageCallback(msgType, msgDest, entityId);
+                }
+            }
+        }
+        catch (...)
+        {
+            // Ignore callback exceptions
+        }
+
+        LOCK_LEAVE();
+    }
+
+    void HandleCvarCallback(const char* cvarName, const char* oldValue, const char* newValue)
+    {
+        if (!cvarName || !oldValue || !newValue)
+            return;
+
+        LOCK_ENTER();
+
+        try
+        {
+            for (size_t i = 0; i < g_cvarCallbacks.length(); i++)
+            {
+                CvarCallbackInfo* info = g_cvarCallbacks[i];
+                if (info && info->cvarName.compare(cvarName) == 0)
+                {
+                    info->cvarCallback(cvarName, oldValue, newValue);
+                }
+            }
+        }
+        catch (...)
+        {
+            // Ignore callback exceptions
+        }
+
+        LOCK_LEAVE();
+    }
 }

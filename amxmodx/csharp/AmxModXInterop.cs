@@ -64,6 +64,24 @@ namespace AmxModX.Interop
     public delegate int ForwardCallback(int forwardId, int numParams);
 
     /// <summary>
+    /// 消息回调委托 / Message callback delegate
+    /// 用于处理消息拦截的回调函数 / Used for handling message interception callbacks
+    /// </summary>
+    /// <param name="msgType">消息类型 / Message type</param>
+    /// <param name="msgDest">消息目标 / Message destination</param>
+    /// <param name="entityId">实体ID / Entity ID</param>
+    public delegate void MessageCallback(int msgType, int msgDest, int entityId);
+
+    /// <summary>
+    /// CVar回调委托 / CVar callback delegate
+    /// 用于处理CVar变化的回调函数 / Used for handling CVar change callbacks
+    /// </summary>
+    /// <param name="cvarName">CVar名称 / CVar name</param>
+    /// <param name="oldValue">旧值 / Old value</param>
+    /// <param name="newValue">新值 / New value</param>
+    public delegate void CvarCallback(string cvarName, string oldValue, string newValue);
+
+    /// <summary>
     /// 命令信息结构 / Command information structure
     /// </summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
@@ -272,6 +290,94 @@ namespace AmxModX.Interop
         /// <summary>武器弹夹数组 / Weapon clip array</summary>
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
         public int[] Clips;
+    }
+
+    /// <summary>
+    /// CVar信息结构 / CVar information structure
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct CvarInfo
+    {
+        /// <summary>CVar名称 / CVar name</summary>
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string Name;
+
+        /// <summary>CVar当前值 / CVar current value</summary>
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string Value;
+
+        /// <summary>CVar默认值 / CVar default value</summary>
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string DefaultValue;
+
+        /// <summary>CVar描述 / CVar description</summary>
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string Description;
+
+        /// <summary>CVar标志 / CVar flags</summary>
+        public int Flags;
+
+        /// <summary>CVar浮点值 / CVar float value</summary>
+        public float FloatValue;
+
+        /// <summary>是否有最小值 / Has minimum value</summary>
+        [MarshalAs(UnmanagedType.I1)]
+        public bool HasMin;
+
+        /// <summary>最小值 / Minimum value</summary>
+        public float MinValue;
+
+        /// <summary>是否有最大值 / Has maximum value</summary>
+        [MarshalAs(UnmanagedType.I1)]
+        public bool HasMax;
+
+        /// <summary>最大值 / Maximum value</summary>
+        public float MaxValue;
+    }
+
+    /// <summary>
+    /// 实体信息结构 / Entity information structure
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public struct EntityInfo
+    {
+        /// <summary>实体ID / Entity ID</summary>
+        public int EntityId;
+
+        /// <summary>实体类名 / Entity class name</summary>
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string ClassName;
+
+        /// <summary>实体目标名 / Entity target name</summary>
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string TargetName;
+
+        /// <summary>实体模型 / Entity model</summary>
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string Model;
+
+        /// <summary>实体位置 / Entity origin</summary>
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+        public float[] Origin;
+
+        /// <summary>实体角度 / Entity angles</summary>
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+        public float[] Angles;
+
+        /// <summary>实体生命值 / Entity health</summary>
+        public float Health;
+
+        /// <summary>实体标志 / Entity flags</summary>
+        public int Flags;
+
+        /// <summary>实体效果 / Entity effects</summary>
+        public int Effects;
+
+        /// <summary>实体固体类型 / Entity solid type</summary>
+        public int Solid;
+
+        /// <summary>实体移动类型 / Entity move type</summary>
+        public int MoveType;
     }
 
     /// <summary>
@@ -897,6 +1003,550 @@ namespace AmxModX.Interop
         [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "SlayPlayer")]
         [return: MarshalAs(UnmanagedType.I1)]
         internal static extern bool SlayPlayer(int clientId);
+
+        // ========== 实体管理接口 / Entity Management Interfaces ==========
+
+        /// <summary>
+        /// 创建实体 / Create entity
+        /// </summary>
+        /// <param name="className">类名 / Class name</param>
+        /// <returns>实体ID，失败返回0 / Entity ID, returns 0 on failure</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "CreateEntity")]
+        internal static extern int CreateEntity([MarshalAs(UnmanagedType.LPStr)] string className);
+
+        /// <summary>
+        /// 移除实体 / Remove entity
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "RemoveEntity")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool RemoveEntity(int entityId);
+
+        /// <summary>
+        /// 获取实体数量 / Get entity count
+        /// </summary>
+        /// <returns>实体数量 / Entity count</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "GetEntityCount")]
+        internal static extern int GetEntityCount();
+
+        /// <summary>
+        /// 按类名查找实体 / Find entity by class name
+        /// </summary>
+        /// <param name="startEntity">起始实体ID / Start entity ID</param>
+        /// <param name="className">类名 / Class name</param>
+        /// <returns>实体ID，未找到返回0 / Entity ID, returns 0 if not found</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "FindEntityByClassName")]
+        internal static extern int FindEntityByClassName(int startEntity, [MarshalAs(UnmanagedType.LPStr)] string className);
+
+        /// <summary>
+        /// 按目标名查找实体 / Find entity by target name
+        /// </summary>
+        /// <param name="startEntity">起始实体ID / Start entity ID</param>
+        /// <param name="targetName">目标名 / Target name</param>
+        /// <returns>实体ID，未找到返回0 / Entity ID, returns 0 if not found</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "FindEntityByTargetName")]
+        internal static extern int FindEntityByTargetName(int startEntity, [MarshalAs(UnmanagedType.LPStr)] string targetName);
+
+        /// <summary>
+        /// 在球形范围内查找实体 / Find entity in sphere
+        /// </summary>
+        /// <param name="startEntity">起始实体ID / Start entity ID</param>
+        /// <param name="origin">中心点 / Origin point</param>
+        /// <param name="radius">半径 / Radius</param>
+        /// <returns>实体ID，未找到返回0 / Entity ID, returns 0 if not found</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "FindEntityInSphere")]
+        internal static extern int FindEntityInSphere(int startEntity, [MarshalAs(UnmanagedType.LPArray, SizeConst = 3)] float[] origin, float radius);
+
+        /// <summary>
+        /// 获取实体整数属性 / Get entity integer property
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <returns>属性值 / Property value</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetEntityInt")]
+        internal static extern int GetEntityInt(int entityId, [MarshalAs(UnmanagedType.LPStr)] string property);
+
+        /// <summary>
+        /// 设置实体整数属性 / Set entity integer property
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <param name="value">属性值 / Property value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetEntityInt")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetEntityInt(int entityId, [MarshalAs(UnmanagedType.LPStr)] string property, int value);
+
+        /// <summary>
+        /// 获取实体浮点属性 / Get entity float property
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <returns>属性值 / Property value</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetEntityFloat")]
+        internal static extern float GetEntityFloat(int entityId, [MarshalAs(UnmanagedType.LPStr)] string property);
+
+        /// <summary>
+        /// 设置实体浮点属性 / Set entity float property
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <param name="value">属性值 / Property value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetEntityFloat")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetEntityFloat(int entityId, [MarshalAs(UnmanagedType.LPStr)] string property, float value);
+
+        /// <summary>
+        /// 获取实体字符串属性 / Get entity string property
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <param name="buffer">缓冲区 / Buffer</param>
+        /// <param name="maxLength">最大长度 / Maximum length</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetEntityString")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool GetEntityString(int entityId, [MarshalAs(UnmanagedType.LPStr)] string property, [MarshalAs(UnmanagedType.LPStr)] System.Text.StringBuilder buffer, int maxLength);
+
+        /// <summary>
+        /// 设置实体字符串属性 / Set entity string property
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <param name="value">属性值 / Property value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetEntityString")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetEntityString(int entityId, [MarshalAs(UnmanagedType.LPStr)] string property, [MarshalAs(UnmanagedType.LPStr)] string value);
+
+        /// <summary>
+        /// 获取实体向量属性 / Get entity vector property
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <param name="vector">向量数组 / Vector array</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetEntityVector")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool GetEntityVector(int entityId, [MarshalAs(UnmanagedType.LPStr)] string property, [MarshalAs(UnmanagedType.LPArray, SizeConst = 3)] float[] vector);
+
+        /// <summary>
+        /// 设置实体向量属性 / Set entity vector property
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <param name="vector">向量数组 / Vector array</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetEntityVector")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetEntityVector(int entityId, [MarshalAs(UnmanagedType.LPStr)] string property, [MarshalAs(UnmanagedType.LPArray, SizeConst = 3)] float[] vector);
+
+        /// <summary>
+        /// 设置实体位置 / Set entity origin
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="origin">位置向量 / Origin vector</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "SetEntityOrigin")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetEntityOrigin(int entityId, [MarshalAs(UnmanagedType.LPArray, SizeConst = 3)] float[] origin);
+
+        /// <summary>
+        /// 设置实体大小 / Set entity size
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="mins">最小边界 / Minimum bounds</param>
+        /// <param name="maxs">最大边界 / Maximum bounds</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "SetEntitySize")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetEntitySize(int entityId, [MarshalAs(UnmanagedType.LPArray, SizeConst = 3)] float[] mins, [MarshalAs(UnmanagedType.LPArray, SizeConst = 3)] float[] maxs);
+
+        /// <summary>
+        /// 设置实体模型 / Set entity model
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="model">模型路径 / Model path</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetEntityModel")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetEntityModel(int entityId, [MarshalAs(UnmanagedType.LPStr)] string model);
+
+        // ========== 消息系统接口 / Message System Interfaces ==========
+
+        /// <summary>
+        /// 注册消息回调 / Register message callback
+        /// </summary>
+        /// <param name="msgId">消息ID / Message ID</param>
+        /// <param name="callback">回调函数 / Callback function</param>
+        /// <returns>消息句柄，失败返回0 / Message handle, returns 0 on failure</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "RegisterMessage")]
+        internal static extern int RegisterMessage(int msgId, MessageCallback callback);
+
+        /// <summary>
+        /// 注销消息回调 / Unregister message callback
+        /// </summary>
+        /// <param name="msgId">消息ID / Message ID</param>
+        /// <param name="msgHandle">消息句柄 / Message handle</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "UnregisterMessage")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool UnregisterMessage(int msgId, int msgHandle);
+
+        /// <summary>
+        /// 设置消息阻塞 / Set message block
+        /// </summary>
+        /// <param name="msgId">消息ID / Message ID</param>
+        /// <param name="blockType">阻塞类型 / Block type</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "SetMessageBlock")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetMessageBlock(int msgId, int blockType);
+
+        /// <summary>
+        /// 获取消息阻塞状态 / Get message block status
+        /// </summary>
+        /// <param name="msgId">消息ID / Message ID</param>
+        /// <returns>阻塞类型 / Block type</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "GetMessageBlock")]
+        internal static extern int GetMessageBlock(int msgId);
+
+        /// <summary>
+        /// 开始消息 / Begin message
+        /// </summary>
+        /// <param name="msgDest">消息目标 / Message destination</param>
+        /// <param name="msgType">消息类型 / Message type</param>
+        /// <param name="origin">原点 / Origin</param>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "MessageBegin")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool MessageBegin(int msgDest, int msgType, [MarshalAs(UnmanagedType.LPArray, SizeConst = 3)] float[] origin, int entityId);
+
+        /// <summary>
+        /// 结束消息 / End message
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "MessageEnd")]
+        internal static extern void MessageEnd();
+
+        /// <summary>
+        /// 写入字节 / Write byte
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "WriteByte")]
+        internal static extern void WriteByte(int value);
+
+        /// <summary>
+        /// 写入字符 / Write char
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "WriteChar")]
+        internal static extern void WriteChar(int value);
+
+        /// <summary>
+        /// 写入短整数 / Write short
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "WriteShort")]
+        internal static extern void WriteShort(int value);
+
+        /// <summary>
+        /// 写入长整数 / Write long
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "WriteLong")]
+        internal static extern void WriteLong(int value);
+
+        /// <summary>
+        /// 写入角度 / Write angle
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "WriteAngle")]
+        internal static extern void WriteAngle(float value);
+
+        /// <summary>
+        /// 写入坐标 / Write coord
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "WriteCoord")]
+        internal static extern void WriteCoord(float value);
+
+        /// <summary>
+        /// 写入字符串 / Write string
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "WriteString")]
+        internal static extern void WriteString([MarshalAs(UnmanagedType.LPStr)] string value);
+
+        /// <summary>
+        /// 写入实体 / Write entity
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "WriteEntity")]
+        internal static extern void WriteEntity(int value);
+
+        /// <summary>
+        /// 引擎开始消息 / Engine begin message
+        /// </summary>
+        /// <param name="msgDest">消息目标 / Message destination</param>
+        /// <param name="msgType">消息类型 / Message type</param>
+        /// <param name="origin">原点 / Origin</param>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineMessageBegin")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool EngineMessageBegin(int msgDest, int msgType, [MarshalAs(UnmanagedType.LPArray, SizeConst = 3)] float[] origin, int entityId);
+
+        /// <summary>
+        /// 引擎结束消息 / Engine end message
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineMessageEnd")]
+        internal static extern void EngineMessageEnd();
+
+        /// <summary>
+        /// 引擎写入字节 / Engine write byte
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineWriteByte")]
+        internal static extern void EngineWriteByte(int value);
+
+        /// <summary>
+        /// 引擎写入字符 / Engine write char
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineWriteChar")]
+        internal static extern void EngineWriteChar(int value);
+
+        /// <summary>
+        /// 引擎写入短整数 / Engine write short
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineWriteShort")]
+        internal static extern void EngineWriteShort(int value);
+
+        /// <summary>
+        /// 引擎写入长整数 / Engine write long
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineWriteLong")]
+        internal static extern void EngineWriteLong(int value);
+
+        /// <summary>
+        /// 引擎写入角度 / Engine write angle
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineWriteAngle")]
+        internal static extern void EngineWriteAngle(float value);
+
+        /// <summary>
+        /// 引擎写入坐标 / Engine write coord
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineWriteCoord")]
+        internal static extern void EngineWriteCoord(float value);
+
+        /// <summary>
+        /// 引擎写入字符串 / Engine write string
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "EngineWriteString")]
+        internal static extern void EngineWriteString([MarshalAs(UnmanagedType.LPStr)] string value);
+
+        /// <summary>
+        /// 引擎写入实体 / Engine write entity
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "EngineWriteEntity")]
+        internal static extern void EngineWriteEntity(int value);
+
+        /// <summary>
+        /// 获取用户消息ID / Get user message ID
+        /// </summary>
+        /// <param name="msgName">消息名称 / Message name</param>
+        /// <returns>消息ID，失败返回0 / Message ID, returns 0 on failure</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetUserMessageId")]
+        internal static extern int GetUserMessageId([MarshalAs(UnmanagedType.LPStr)] string msgName);
+
+        /// <summary>
+        /// 获取用户消息名称 / Get user message name
+        /// </summary>
+        /// <param name="msgId">消息ID / Message ID</param>
+        /// <param name="buffer">缓冲区 / Buffer</param>
+        /// <param name="bufferSize">缓冲区大小 / Buffer size</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetUserMessageName")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool GetUserMessageName(int msgId, [MarshalAs(UnmanagedType.LPStr)] System.Text.StringBuilder buffer, int bufferSize);
+
+        // ========== CVars系统接口 / CVars System Interfaces ==========
+
+        /// <summary>
+        /// 创建CVar / Create CVar
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="value">值 / Value</param>
+        /// <param name="flags">标志 / Flags</param>
+        /// <param name="description">描述 / Description</param>
+        /// <param name="hasMin">是否有最小值 / Has minimum</param>
+        /// <param name="minValue">最小值 / Minimum value</param>
+        /// <param name="hasMax">是否有最大值 / Has maximum</param>
+        /// <param name="maxValue">最大值 / Maximum value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "CreateCvar")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool CreateCvar([MarshalAs(UnmanagedType.LPStr)] string name, [MarshalAs(UnmanagedType.LPStr)] string value, int flags, [MarshalAs(UnmanagedType.LPStr)] string description, [MarshalAs(UnmanagedType.I1)] bool hasMin, float minValue, [MarshalAs(UnmanagedType.I1)] bool hasMax, float maxValue);
+
+        /// <summary>
+        /// 注册CVar / Register CVar
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="value">值 / Value</param>
+        /// <param name="flags">标志 / Flags</param>
+        /// <param name="floatValue">浮点值 / Float value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "RegisterCvar")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool RegisterCvar([MarshalAs(UnmanagedType.LPStr)] string name, [MarshalAs(UnmanagedType.LPStr)] string value, int flags, float floatValue);
+
+        /// <summary>
+        /// 检查CVar是否存在 / Check if CVar exists
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <returns>是否存在 / Whether exists</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "CvarExists")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool CvarExists([MarshalAs(UnmanagedType.LPStr)] string name);
+
+        /// <summary>
+        /// 获取CVar字符串值 / Get CVar string value
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="buffer">缓冲区 / Buffer</param>
+        /// <param name="bufferSize">缓冲区大小 / Buffer size</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetCvarString")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool GetCvarString([MarshalAs(UnmanagedType.LPStr)] string name, [MarshalAs(UnmanagedType.LPStr)] System.Text.StringBuilder buffer, int bufferSize);
+
+        /// <summary>
+        /// 获取CVar整数值 / Get CVar integer value
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <returns>整数值 / Integer value</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetCvarInt")]
+        internal static extern int GetCvarInt([MarshalAs(UnmanagedType.LPStr)] string name);
+
+        /// <summary>
+        /// 获取CVar浮点值 / Get CVar float value
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <returns>浮点值 / Float value</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetCvarFloat")]
+        internal static extern float GetCvarFloat([MarshalAs(UnmanagedType.LPStr)] string name);
+
+        /// <summary>
+        /// 获取CVar标志 / Get CVar flags
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <returns>标志值 / Flags value</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetCvarFlags")]
+        internal static extern int GetCvarFlags([MarshalAs(UnmanagedType.LPStr)] string name);
+
+        /// <summary>
+        /// 设置CVar字符串值 / Set CVar string value
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="value">值 / Value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetCvarString")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetCvarString([MarshalAs(UnmanagedType.LPStr)] string name, [MarshalAs(UnmanagedType.LPStr)] string value);
+
+        /// <summary>
+        /// 设置CVar整数值 / Set CVar integer value
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="value">值 / Value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetCvarInt")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetCvarInt([MarshalAs(UnmanagedType.LPStr)] string name, int value);
+
+        /// <summary>
+        /// 设置CVar浮点值 / Set CVar float value
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="value">值 / Value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetCvarFloat")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetCvarFloat([MarshalAs(UnmanagedType.LPStr)] string name, float value);
+
+        /// <summary>
+        /// 设置CVar标志 / Set CVar flags
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="flags">标志值 / Flags value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetCvarFlags")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetCvarFlags([MarshalAs(UnmanagedType.LPStr)] string name, int flags);
+
+        /// <summary>
+        /// 获取CVar信息 / Get CVar info
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="outInfo">输出信息 / Output info</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetCvarInfo")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool GetCvarInfo([MarshalAs(UnmanagedType.LPStr)] string name, out CvarInfo outInfo);
+
+        /// <summary>
+        /// 钩子CVar变化 / Hook CVar change
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="callback">回调函数 / Callback function</param>
+        /// <returns>钩子ID，失败返回0 / Hook ID, returns 0 on failure</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "HookCvarChange")]
+        internal static extern int HookCvarChange([MarshalAs(UnmanagedType.LPStr)] string name, CvarCallback callback);
+
+        /// <summary>
+        /// 取消钩子CVar变化 / Unhook CVar change
+        /// </summary>
+        /// <param name="hookId">钩子ID / Hook ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, EntryPoint = "UnhookCvarChange")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool UnhookCvarChange(int hookId);
+
+        /// <summary>
+        /// 设置CVar边界 / Set CVar bounds
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="hasMin">是否有最小值 / Has minimum</param>
+        /// <param name="minValue">最小值 / Minimum value</param>
+        /// <param name="hasMax">是否有最大值 / Has maximum</param>
+        /// <param name="maxValue">最大值 / Maximum value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "SetCvarBounds")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SetCvarBounds([MarshalAs(UnmanagedType.LPStr)] string name, [MarshalAs(UnmanagedType.I1)] bool hasMin, float minValue, [MarshalAs(UnmanagedType.I1)] bool hasMax, float maxValue);
+
+        /// <summary>
+        /// 获取CVar边界 / Get CVar bounds
+        /// </summary>
+        /// <param name="name">名称 / Name</param>
+        /// <param name="hasMin">是否有最小值 / Has minimum</param>
+        /// <param name="minValue">最小值 / Minimum value</param>
+        /// <param name="hasMax">是否有最大值 / Has maximum</param>
+        /// <param name="maxValue">最大值 / Maximum value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi, EntryPoint = "GetCvarBounds")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool GetCvarBounds([MarshalAs(UnmanagedType.LPStr)] string name, [MarshalAs(UnmanagedType.I1)] out bool hasMin, out float minValue, [MarshalAs(UnmanagedType.I1)] out bool hasMax, out float maxValue);
 
         /// <summary>
         /// 注册控制台命令 / Register console command
@@ -2134,6 +2784,191 @@ namespace AmxModX.Interop
 
             return new List<int>();
         }
+
+        // ========== 实体管理接口 / Entity Management Interfaces ==========
+
+        /// <summary>
+        /// 创建实体 / Create entity
+        /// 创建指定类名的新实体 / Create new entity with specified class name
+        /// </summary>
+        /// <param name="className">实体类名 / Entity class name</param>
+        /// <returns>实体ID，失败返回0 / Entity ID, returns 0 on failure</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        /// <exception cref="ArgumentException">当类名为空时抛出 / Thrown when class name is empty</exception>
+        public static int CreateEntity(string className)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrEmpty(className))
+                throw new ArgumentException("Class name cannot be null or empty.", nameof(className));
+
+            return NativeMethods.CreateEntity(className);
+        }
+
+        /// <summary>
+        /// 移除实体 / Remove entity
+        /// 从游戏世界中移除指定实体 / Remove specified entity from game world
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        public static bool RemoveEntity(int entityId)
+        {
+            EnsureInitialized();
+            return NativeMethods.RemoveEntity(entityId);
+        }
+
+        /// <summary>
+        /// 获取实体数量 / Get entity count
+        /// 获取当前游戏世界中的实体总数 / Get total number of entities in current game world
+        /// </summary>
+        /// <returns>实体数量 / Entity count</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        public static int GetEntityCount()
+        {
+            EnsureInitialized();
+            return NativeMethods.GetEntityCount();
+        }
+
+        /// <summary>
+        /// 按类名查找实体 / Find entity by class name
+        /// 从指定起始实体开始查找具有指定类名的实体 / Find entity with specified class name starting from given entity
+        /// </summary>
+        /// <param name="startEntity">起始实体ID，0表示从头开始 / Start entity ID, 0 means start from beginning</param>
+        /// <param name="className">实体类名 / Entity class name</param>
+        /// <returns>实体ID，未找到返回0 / Entity ID, returns 0 if not found</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        /// <exception cref="ArgumentException">当类名为空时抛出 / Thrown when class name is empty</exception>
+        public static int FindEntityByClassName(int startEntity, string className)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrEmpty(className))
+                throw new ArgumentException("Class name cannot be null or empty.", nameof(className));
+
+            return NativeMethods.FindEntityByClassName(startEntity, className);
+        }
+
+        /// <summary>
+        /// 按目标名查找实体 / Find entity by target name
+        /// 从指定起始实体开始查找具有指定目标名的实体 / Find entity with specified target name starting from given entity
+        /// </summary>
+        /// <param name="startEntity">起始实体ID，0表示从头开始 / Start entity ID, 0 means start from beginning</param>
+        /// <param name="targetName">目标名 / Target name</param>
+        /// <returns>实体ID，未找到返回0 / Entity ID, returns 0 if not found</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        /// <exception cref="ArgumentException">当目标名为空时抛出 / Thrown when target name is empty</exception>
+        public static int FindEntityByTargetName(int startEntity, string targetName)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrEmpty(targetName))
+                throw new ArgumentException("Target name cannot be null or empty.", nameof(targetName));
+
+            return NativeMethods.FindEntityByTargetName(startEntity, targetName);
+        }
+
+        /// <summary>
+        /// 在球形范围内查找实体 / Find entity in sphere
+        /// 在指定中心点和半径范围内查找实体 / Find entity within specified center point and radius
+        /// </summary>
+        /// <param name="startEntity">起始实体ID，0表示从头开始 / Start entity ID, 0 means start from beginning</param>
+        /// <param name="origin">中心点坐标 / Center point coordinates</param>
+        /// <param name="radius">搜索半径 / Search radius</param>
+        /// <returns>实体ID，未找到返回0 / Entity ID, returns 0 if not found</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        /// <exception cref="ArgumentException">当坐标数组无效时抛出 / Thrown when origin array is invalid</exception>
+        /// <exception cref="ArgumentOutOfRangeException">当半径小于0时抛出 / Thrown when radius is less than 0</exception>
+        public static int FindEntityInSphere(int startEntity, float[] origin, float radius)
+        {
+            EnsureInitialized();
+
+            if (origin == null || origin.Length != 3)
+                throw new ArgumentException("Origin must be a 3-element float array.", nameof(origin));
+
+            if (radius < 0)
+                throw new ArgumentOutOfRangeException(nameof(radius), "Radius cannot be negative.");
+
+            return NativeMethods.FindEntityInSphere(startEntity, origin, radius);
+        }
+
+        /// <summary>
+        /// 获取实体整数属性 / Get entity integer property
+        /// 获取指定实体的整数类型属性值 / Get integer property value of specified entity
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <returns>属性值 / Property value</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        /// <exception cref="ArgumentException">当属性名为空时抛出 / Thrown when property name is empty</exception>
+        public static int GetEntityInt(int entityId, string property)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrEmpty(property))
+                throw new ArgumentException("Property name cannot be null or empty.", nameof(property));
+
+            return NativeMethods.GetEntityInt(entityId, property);
+        }
+
+        /// <summary>
+        /// 设置实体整数属性 / Set entity integer property
+        /// 设置指定实体的整数类型属性值 / Set integer property value of specified entity
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <param name="value">属性值 / Property value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        /// <exception cref="ArgumentException">当属性名为空时抛出 / Thrown when property name is empty</exception>
+        public static bool SetEntityInt(int entityId, string property, int value)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrEmpty(property))
+                throw new ArgumentException("Property name cannot be null or empty.", nameof(property));
+
+            return NativeMethods.SetEntityInt(entityId, property, value);
+        }
+
+        /// <summary>
+        /// 获取实体浮点属性 / Get entity float property
+        /// 获取指定实体的浮点类型属性值 / Get float property value of specified entity
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <returns>属性值 / Property value</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        /// <exception cref="ArgumentException">当属性名为空时抛出 / Thrown when property name is empty</exception>
+        public static float GetEntityFloat(int entityId, string property)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrEmpty(property))
+                throw new ArgumentException("Property name cannot be null or empty.", nameof(property));
+
+            return NativeMethods.GetEntityFloat(entityId, property);
+        }
+
+        /// <summary>
+        /// 设置实体浮点属性 / Set entity float property
+        /// 设置指定实体的浮点类型属性值 / Set float property value of specified entity
+        /// </summary>
+        /// <param name="entityId">实体ID / Entity ID</param>
+        /// <param name="property">属性名 / Property name</param>
+        /// <param name="value">属性值 / Property value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        /// <exception cref="InvalidOperationException">当系统未初始化时抛出 / Thrown when system is not initialized</exception>
+        /// <exception cref="ArgumentException">当属性名为空时抛出 / Thrown when property name is empty</exception>
+        public static bool SetEntityFloat(int entityId, string property, float value)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrEmpty(property))
+                throw new ArgumentException("Property name cannot be null or empty.", nameof(property));
+
+            return NativeMethods.SetEntityFloat(entityId, property, value);
+        }
     }
 
     /// <summary>
@@ -2261,5 +3096,171 @@ namespace AmxModX.Interop
         public const int StringEx = 6;
         /// <summary>结束标记 / End marker</summary>
         public const int Done = -1;
+    }
+
+    /// <summary>
+    /// 消息目标常量 / Message destination constants
+    /// 定义消息发送的目标类型 / Define message destination types
+    /// </summary>
+    public static class MessageDest
+    {
+        /// <summary>广播给所有客户端 / Broadcast to all clients</summary>
+        public const int Broadcast = 0;
+
+        /// <summary>发送给一个客户端 / Send to one client</summary>
+        public const int OneClient = 1;
+
+        /// <summary>发送给所有客户端 / Send to all clients</summary>
+        public const int All = 2;
+
+        /// <summary>发送给初始化的客户端 / Send to init clients</summary>
+        public const int Init = 3;
+
+        /// <summary>发送给PVS中的客户端 / Send to clients in PVS</summary>
+        public const int PVS = 4;
+
+        /// <summary>发送给PAS中的客户端 / Send to clients in PAS</summary>
+        public const int PAS = 5;
+
+        /// <summary>发送给PVS_R中的客户端 / Send to clients in PVS_R</summary>
+        public const int PVS_R = 6;
+
+        /// <summary>发送给PAS_R中的客户端 / Send to clients in PAS_R</summary>
+        public const int PAS_R = 7;
+
+        /// <summary>发送给一个不可靠的客户端 / Send to one unreliable client</summary>
+        public const int OneUnreliable = 8;
+
+        /// <summary>发送给所有不可靠的客户端 / Send to all unreliable clients</summary>
+        public const int AllUnreliable = 9;
+    }
+
+    /// <summary>
+    /// 消息阻塞类型常量 / Message block type constants
+    /// 定义消息阻塞的类型 / Define message blocking types
+    /// </summary>
+    public static class MessageBlock
+    {
+        /// <summary>不阻塞 / Not blocked</summary>
+        public const int NotBlocked = 0;
+
+        /// <summary>阻塞 / Blocked</summary>
+        public const int Blocked = 1;
+
+        /// <summary>阻塞一次 / Block once</summary>
+        public const int Once = 2;
+    }
+
+    /// <summary>
+    /// CVar标志常量 / CVar flags constants
+    /// 定义CVar的标志位 / Define CVar flag bits
+    /// </summary>
+    public static class CvarFlags
+    {
+        /// <summary>无标志 / No flags</summary>
+        public const int None = 0;
+
+        /// <summary>服务器变量 / Server variable</summary>
+        public const int Server = 1;
+
+        /// <summary>用户信息 / User info</summary>
+        public const int UserInfo = 2;
+
+        /// <summary>服务器信息 / Server info</summary>
+        public const int ServerInfo = 4;
+
+        /// <summary>存档变量 / Archive variable</summary>
+        public const int Archive = 8;
+
+        /// <summary>通知变化 / Notify on change</summary>
+        public const int Notify = 16;
+
+        /// <summary>受保护的变量 / Protected variable</summary>
+        public const int Protected = 32;
+
+        /// <summary>SPONLY变量 / SPONLY variable</summary>
+        public const int SPOnly = 64;
+
+        /// <summary>不打印 / Don't print</summary>
+        public const int PrintableOnly = 128;
+
+        /// <summary>未记录 / Unlogged</summary>
+        public const int Unlogged = 256;
+
+        /// <summary>从不作为字符串 / Never as string</summary>
+        public const int NeverAsString = 512;
+    }
+
+    /// <summary>
+    /// 实体属性常量 / Entity property constants
+    /// 定义实体属性名称 / Define entity property names
+    /// </summary>
+    public static class EntityProperty
+    {
+        /// <summary>生命值 / Health</summary>
+        public const string Health = "health";
+
+        /// <summary>护甲值 / Armor</summary>
+        public const string Armor = "armor";
+
+        /// <summary>队伍 / Team</summary>
+        public const string Team = "team";
+
+        /// <summary>类名 / Class name</summary>
+        public const string ClassName = "classname";
+
+        /// <summary>目标名 / Target name</summary>
+        public const string TargetName = "targetname";
+
+        /// <summary>目标 / Target</summary>
+        public const string Target = "target";
+
+        /// <summary>模型 / Model</summary>
+        public const string Model = "model";
+
+        /// <summary>位置 / Origin</summary>
+        public const string Origin = "origin";
+
+        /// <summary>角度 / Angles</summary>
+        public const string Angles = "angles";
+
+        /// <summary>速度 / Velocity</summary>
+        public const string Velocity = "velocity";
+
+        /// <summary>最小边界 / Minimum bounds</summary>
+        public const string Mins = "mins";
+
+        /// <summary>最大边界 / Maximum bounds</summary>
+        public const string Maxs = "maxs";
+
+        /// <summary>标志 / Flags</summary>
+        public const string Flags = "flags";
+
+        /// <summary>效果 / Effects</summary>
+        public const string Effects = "effects";
+
+        /// <summary>固体类型 / Solid type</summary>
+        public const string Solid = "solid";
+
+        /// <summary>移动类型 / Move type</summary>
+        public const string MoveType = "movetype";
+
+        /// <summary>重力 / Gravity</summary>
+        public const string Gravity = "gravity";
+
+        /// <summary>摩擦力 / Friction</summary>
+        public const string Friction = "friction";
+
+        /// <summary>最大速度 / Max speed</summary>
+        public const string MaxSpeed = "speed";
+
+        /// <summary>帧率 / Frame rate</summary>
+        public const string FrameRate = "framerate";
+
+        /// <summary>缩放 / Scale</summary>
+        public const string Scale = "scale";
+
+        /// <summary>受伤害 / Take damage</summary>
+        public const string TakeDamage = "takedamage";
     }
 }

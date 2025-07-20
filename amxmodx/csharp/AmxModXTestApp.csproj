@@ -38,6 +38,7 @@
     <Compile Include="CommandExecutionExample.cs" />
     <Compile Include="EventSystemExample.cs" />
     <Compile Include="PlayerManagementExample.cs" />
+    <Compile Include="EntityMessageCvarExample.cs" />
     <Compile Include="TestProgram.cs" />
   </ItemGroup>
 
