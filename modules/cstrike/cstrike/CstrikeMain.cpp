@@ -16,6 +16,7 @@
 #include "CstrikeHacks.h"
 #include "CstrikeItemsInfos.h"
 #include "CstrikeUserMessages.h"
+#include "cstrike_bridge.h"
 #include <IGameConfigs.h>
 #include <resdk/mod_rehlds_api.h>
 
@@ -61,6 +62,9 @@ void OnAmxxAttach()
 	}
 
 	InitializeHacks();
+
+	// Initialize C# bridge layer
+	InitializeCStrikeBridge();
 }
 
 void OnPluginsLoaded()
@@ -148,4 +152,7 @@ void OnAmxxDetach()
 	ConfigManager->CloseGameConfigFile(CommonConfig);
 
 	ShutdownHacks();
+
+	// Shutdown C# bridge layer
+	ShutdownCStrikeBridge();
 }
