@@ -24,12 +24,14 @@
 #include "DataHandler.h"
 #include "hook_specialbot.h"
 #include <HLTypeConversion.h>
+// 在文件开头添加include
+#include "csharp_bridge.h"
+
 
 HLTypeConversion TypeConversion;
 
 extern ke::Vector<Hook*> hooks[HAM_LAST_ENTRY_DONT_USE_ME_LOL];
 extern CHamSpecialBotHandler SpecialbotHandler;
-
 extern AMX_NATIVE_INFO RegisterNatives[];
 extern AMX_NATIVE_INFO ReturnNatives[];
 extern AMX_NATIVE_INFO pdata_natives[];
@@ -103,6 +105,10 @@ void OnAmxxDetach()
 		delete g_FreeIIs.front();
 		g_FreeIIs.pop();
 	}
+	
+	// 清理C#桥接资源
+	g_CsharpBridge.CleanupCSharpBridge();
+
 }
 
 void HamCommand(void);
@@ -127,6 +133,7 @@ void OnPluginsLoaded(void)
 void OnMetaAttach(void)
 {
 	REG_SVR_COMMAND("ham", HamCommand);
+	g_CsharpBridge = CsharpBridge();
 }
 
 void SetClientKeyValue(int clientIndex, char *infobuffer, const char *key, const char *value)
@@ -134,3 +141,5 @@ void SetClientKeyValue(int clientIndex, char *infobuffer, const char *key, const
 	SpecialbotHandler.CheckClientKeyValue(clientIndex, infobuffer, key, value);
 	RETURN_META(MRES_IGNORED);
 }
+
+

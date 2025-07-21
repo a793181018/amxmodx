@@ -30,6 +30,11 @@
 #include "hook_specialbot.h"
 #include <amtl/am-vector.h>
 
+
+
+#include "csharp_bridge.h"
+
+
 OffsetManager Offsets;
 
 bool gDoForwards=true;
@@ -800,11 +805,38 @@ static cell AMX_NATIVE_CALL ExecuteHam(AMX *amx, cell *params)
 static cell AMX_NATIVE_CALL ExecuteHamB(AMX *amx, cell *params)
 {
 	int func=params[1];
-
 	CHECK_FUNCTION(func);
 
 	gDoForwards=true;
-	return hooklist[func].call(amx, params);
+	
+	// 执行原有逻辑
+	cell result = hooklist[func].call(amx, params);
+	
+	// 如果有C#回调，也要触发
+	if (g_CsharpBridge.csharpGlobalCallback)
+	{
+		int entity = params[2]; // 通常第二个参数是实体ID
+		
+		// 查找对应的C#回调
+		for (size_t i = 0; i < g_CsharpBridge.csharpCallbacks.length(); ++i)
+		{
+			CSharpCallback* cb = g_CsharpBridge.csharpCallbacks.at(i);
+			if (cb && cb->hamId == func)
+			{
+				// 准备参数数据
+				struct HamParams {
+					cell* amxParams;
+					int paramCount;
+				} hamParams = { params, *params / sizeof(cell) };
+				
+				// 触发C#回调
+				cb->callback(entity, func, &hamParams);
+			}
+		}
+	}
+	
+	g_CsharpBridge.TriggerCSharpExecuteCallback(func, params, *params / sizeof(cell));
+	return result;
 }
 
 

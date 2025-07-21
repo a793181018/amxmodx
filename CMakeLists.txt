@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CMakeLists.txt for AMX Mod X Bridge
 # Cross-platform build configuration for C# interop bridge
 

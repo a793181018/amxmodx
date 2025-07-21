@@ -336,6 +336,9 @@
     <ClCompile Include="..\..\third_party\utf8rewind\internal\streaming.c">
       <Filter>Third Party\UTF8Rewind\internal</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\MenuBridge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\amx.h">
@@ -582,6 +585,9 @@
       <Filter>ReSDK</Filter>
     </ClInclude>
     <ClInclude Include="..\CFrameAction.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\MenuBridge.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

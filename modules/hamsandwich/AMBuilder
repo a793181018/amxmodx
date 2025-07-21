@@ -20,6 +20,7 @@ binary.sources = [
   'DataHandler.cpp',
   'pdata.cpp',
   'hook_specialbot.cpp',
+  'csharp_bridge.cpp',  # 新增C#桥接文件
 ]
 
 if builder.target_platform == 'windows':
