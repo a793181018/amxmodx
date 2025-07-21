@@ -559,5 +559,493 @@ namespace AmxModX.Interop
         internal static extern bool DestroyDataPack(int packId);
 
         #endregion
+
+        #region Core AMX Functions
+
+        /// <summary>
+        /// 日志回调委托 / Log callback delegate
+        /// </summary>
+        /// <param name="logLevel">日志级别 / Log level</param>
+        /// <param name="message">日志消息 / Log message</param>
+        public delegate void LogCallback(int logLevel, string message);
+
+        /// <summary>
+        /// 函数调用回调委托 / Function call callback delegate
+        /// </summary>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <param name="funcId">函数ID / Function ID</param>
+        /// <param name="paramCount">参数数量 / Parameter count</param>
+        /// <returns>返回值 / Return value</returns>
+        public delegate int CallFuncCallback(int pluginId, int funcId, int paramCount);
+
+        /// <summary>
+        /// 插件信息结构 / Plugin information structure
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+        public struct PluginInfo
+        {
+            /// <summary>文件名 / File name</summary>
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string FileName;
+
+            /// <summary>插件名称 / Plugin name</summary>
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string Name;
+
+            /// <summary>版本 / Version</summary>
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string Version;
+
+            /// <summary>作者 / Author</summary>
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string Author;
+
+            /// <summary>状态 / Status</summary>
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string Status;
+
+            /// <summary>URL</summary>
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string Url;
+
+            /// <summary>描述 / Description</summary>
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 512)]
+            public string Description;
+
+            /// <summary>插件ID / Plugin ID</summary>
+            public int PluginId;
+
+            /// <summary>状态代码 / Status code</summary>
+            public int StatusCode;
+
+            /// <summary>是否有效 / Is valid</summary>
+            [MarshalAs(UnmanagedType.I1)]
+            public bool IsValid;
+
+            /// <summary>是否运行中 / Is running</summary>
+            [MarshalAs(UnmanagedType.I1)]
+            public bool IsRunning;
+
+            /// <summary>是否暂停 / Is paused</summary>
+            [MarshalAs(UnmanagedType.I1)]
+            public bool IsPaused;
+        }
+
+        /// <summary>
+        /// Forward信息结构 / Forward information structure
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+        public struct ForwardInfo
+        {
+            /// <summary>Forward名称 / Forward name</summary>
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string Name;
+
+            /// <summary>Forward ID</summary>
+            public int ForwardId;
+
+            /// <summary>参数数量 / Parameter count</summary>
+            public int ParamCount;
+
+            /// <summary>执行类型 / Execution type</summary>
+            public int ExecType;
+
+            /// <summary>是否有效 / Is valid</summary>
+            [MarshalAs(UnmanagedType.I1)]
+            public bool IsValid;
+        }
+
+        // Plugin management functions
+
+        /// <summary>
+        /// 获取插件数量 / Get plugins number
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int GetPluginsNum();
+
+        /// <summary>
+        /// 获取插件信息 / Get plugin information
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool GetPluginInfo(int pluginId, out PluginInfo outInfo);
+
+        /// <summary>
+        /// 查找插件 / Find plugin
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        internal static extern int FindPlugin([MarshalAs(UnmanagedType.LPStr)] string fileName);
+
+        /// <summary>
+        /// 检查插件是否有效 / Check if plugin is valid
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool IsPluginValid(int pluginId);
+
+        /// <summary>
+        /// 检查插件是否运行中 / Check if plugin is running
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool IsPluginRunning(int pluginId);
+
+        /// <summary>
+        /// 暂停插件 / Pause plugin
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool PausePlugin(int pluginId);
+
+        /// <summary>
+        /// 恢复插件 / Unpause plugin
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool UnpausePlugin(int pluginId);
+
+        // Function call system
+
+        /// <summary>
+        /// 开始函数调用 / Begin function call
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool CallFuncBegin(
+            [MarshalAs(UnmanagedType.LPStr)] string funcName,
+            [MarshalAs(UnmanagedType.LPStr)] string pluginName);
+
+        /// <summary>
+        /// 通过ID开始函数调用 / Begin function call by ID
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool CallFuncBeginById(int funcId, int pluginId);
+
+        /// <summary>
+        /// 压入整数参数 / Push integer parameter
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool CallFuncPushInt(int value);
+
+        /// <summary>
+        /// 压入浮点参数 / Push float parameter
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool CallFuncPushFloat(float value);
+
+        /// <summary>
+        /// 压入字符串参数 / Push string parameter
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool CallFuncPushString([MarshalAs(UnmanagedType.LPStr)] string value);
+
+        /// <summary>
+        /// 压入数组参数 / Push array parameter
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool CallFuncPushArray(int[] array, int size);
+
+        /// <summary>
+        /// 结束函数调用 / End function call
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int CallFuncEnd();
+
+        /// <summary>
+        /// 获取函数ID / Get function ID
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        internal static extern int GetFuncId(
+            [MarshalAs(UnmanagedType.LPStr)] string funcName,
+            int pluginId);
+
+        // Forward system functions
+
+        /// <summary>
+        /// 创建Forward / Create forward
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        internal static extern int CreateForward(
+            [MarshalAs(UnmanagedType.LPStr)] string funcName,
+            int execType,
+            int[] paramTypes,
+            int paramCount);
+
+        /// <summary>
+        /// 创建单插件Forward / Create single plugin forward
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        internal static extern int CreateSPForward(
+            [MarshalAs(UnmanagedType.LPStr)] string funcName,
+            int pluginId,
+            int[] paramTypes,
+            int paramCount);
+
+        /// <summary>
+        /// 销毁Forward / Destroy forward
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool DestroyForward(int forwardId);
+
+        /// <summary>
+        /// 执行Forward / Execute forward
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int ExecuteForward(int forwardId, int[] parameters, int paramCount);
+
+        /// <summary>
+        /// 获取Forward信息 / Get forward information
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool GetForwardInfo(int forwardId, out ForwardInfo outInfo);
+
+        // Server functions
+
+        /// <summary>
+        /// 服务器打印 / Server print
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool ServerPrint([MarshalAs(UnmanagedType.LPStr)] string message);
+
+        /// <summary>
+        /// 服务器命令 / Server command
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool ServerCmd([MarshalAs(UnmanagedType.LPStr)] string command);
+
+        /// <summary>
+        /// 执行服务器命令 / Execute server command
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool ServerExec();
+
+        /// <summary>
+        /// 是否为专用服务器 / Is dedicated server
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool IsDedicatedServer();
+
+        /// <summary>
+        /// 是否为Linux服务器 / Is Linux server
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool IsLinuxServer();
+
+        /// <summary>
+        /// 检查地图是否有效 / Check if map is valid
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool IsMapValid([MarshalAs(UnmanagedType.LPStr)] string mapName);
+
+        // Client functions
+
+        /// <summary>
+        /// 获取玩家数量 / Get players number
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int GetPlayersNum([MarshalAs(UnmanagedType.I1)] bool includeConnecting);
+
+        /// <summary>
+        /// 检查用户是否为机器人 / Check if user is bot
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool IsUserBot(int clientId);
+
+        /// <summary>
+        /// 检查用户是否已连接 / Check if user is connected
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool IsUserConnected(int clientId);
+
+        /// <summary>
+        /// 检查用户是否存活 / Check if user is alive
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool IsUserAlive(int clientId);
+
+        /// <summary>
+        /// 获取用户时间 / Get user time
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int GetUserTime(int clientId, [MarshalAs(UnmanagedType.I1)] bool playtime);
+
+        /// <summary>
+        /// 客户端命令 / Client command
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool ClientCmd(int clientId, [MarshalAs(UnmanagedType.LPStr)] string command);
+
+        /// <summary>
+        /// 虚假客户端命令 / Fake client command
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool FakeClientCmd(int clientId, [MarshalAs(UnmanagedType.LPStr)] string command);
+
+        // Admin management functions
+
+        /// <summary>
+        /// 添加管理员 / Add admin
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool AdminsPush(
+            [MarshalAs(UnmanagedType.LPStr)] string authData,
+            [MarshalAs(UnmanagedType.LPStr)] string password,
+            int access,
+            int flags);
+
+        /// <summary>
+        /// 清空管理员列表 / Flush admins list
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool AdminsFlush();
+
+        /// <summary>
+        /// 获取管理员数量 / Get admins number
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int AdminsNum();
+
+        /// <summary>
+        /// 查找管理员信息 / Lookup admin information
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool AdminsLookup(
+            int index,
+            int property,
+            [MarshalAs(UnmanagedType.LPStr)] StringBuilder buffer,
+            int bufferSize,
+            out int outValue);
+
+        // Logging functions
+
+        /// <summary>
+        /// 记录到文件 / Log to file
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool LogToFile(
+            [MarshalAs(UnmanagedType.LPStr)] string fileName,
+            [MarshalAs(UnmanagedType.LPStr)] string message);
+
+        /// <summary>
+        /// AMX日志 / AMX log
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool LogAmx([MarshalAs(UnmanagedType.LPStr)] string message);
+
+        /// <summary>
+        /// 记录错误 / Log error
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool LogError(int errorCode, [MarshalAs(UnmanagedType.LPStr)] string message);
+
+        /// <summary>
+        /// 注册日志回调 / Register log callback
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int RegisterLogCallback(LogCallback callback);
+
+        /// <summary>
+        /// 取消注册日志回调 / Unregister log callback
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool UnregisterLogCallback(int callbackId);
+
+        // Library management functions
+
+        /// <summary>
+        /// 注册库 / Register library
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool RegisterLibrary([MarshalAs(UnmanagedType.LPStr)] string libraryName);
+
+        /// <summary>
+        /// 检查库是否存在 / Check if library exists
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool LibraryExists([MarshalAs(UnmanagedType.LPStr)] string libraryName);
+
+        // Utility functions
+
+        /// <summary>
+        /// 中止执行 / Abort execution
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool AbortExecution(int errorCode, [MarshalAs(UnmanagedType.LPStr)] string message);
+
+        /// <summary>
+        /// 获取堆空间 / Get heap space
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int GetHeapSpace();
+
+        /// <summary>
+        /// 获取参数数量 / Get number of arguments
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int GetNumArgs();
+
+        /// <summary>
+        /// 交换字符 / Swap characters
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        [return: MarshalAs(UnmanagedType.I1)]
+        internal static extern bool SwapChars(
+            [MarshalAs(UnmanagedType.LPStr)] StringBuilder stringValue,
+            int char1,
+            int char2);
+
+        /// <summary>
+        /// 随机整数 / Random integer
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int RandomInt(int max);
+
+        /// <summary>
+        /// 最小整数 / Minimum integer
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int MinInt(int a, int b);
+
+        /// <summary>
+        /// 最大整数 / Maximum integer
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int MaxInt(int a, int b);
+
+        /// <summary>
+        /// 限制整数范围 / Clamp integer
+        /// </summary>
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        internal static extern int ClampInt(int value, int min, int max);
+
+        #endregion
     }
 }

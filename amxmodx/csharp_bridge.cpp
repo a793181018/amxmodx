@@ -44,6 +44,9 @@ namespace CSharpBridge
     ke::Vector<GameConfigInfo*> g_gameConfigs;
     ke::Vector<NativeCallbackInfo*> g_nativeCallbacks;
     ke::Vector<DataPackInfo*> g_dataPacks;
+    ke::Vector<LogCallbackInfo*> g_logCallbacks;
+    ke::Vector<ForwardCallbackInfo*> g_forwardCallbacks;
+    CallFuncInfo g_callFuncInfo = {nullptr, -1, 0, false};
     int g_nextCommandId = 1;
     int g_nextMenuId = 1;
     int g_nextEventHandle = 1;
@@ -53,6 +56,7 @@ namespace CSharpBridge
     int g_nextGameConfigId = 1;
     int g_nextNativeId = 1;
     int g_nextDataPackId = 1;
+    int g_nextLogCallbackId = 1;
     bool g_initialized = false;
 
     // Current event context for parameter reading
@@ -239,6 +243,23 @@ namespace CSharpBridge
             delete g_dataPacks[i];
         }
         g_dataPacks.clear();
+
+        // Clean up log callbacks
+        for (size_t i = 0; i < g_logCallbacks.length(); i++)
+        {
+            delete g_logCallbacks[i];
+        }
+        g_logCallbacks.clear();
+
+        // Clean up forward callbacks
+        for (size_t i = 0; i < g_forwardCallbacks.length(); i++)
+        {
+            delete g_forwardCallbacks[i];
+        }
+        g_forwardCallbacks.clear();
+
+        // Clean up call func info
+        CleanupCallFunc();
 
         g_initialized = false;
         LOCK_DESTROY();
@@ -4492,4 +4513,907 @@ namespace CSharpBridge
 
         LOCK_LEAVE();
     }
+}
+
+// Core AMX functions implementation
+
+// Plugin management functions
+CSHARP_EXPORT int CSHARP_CALL GetPluginsNum()
+{
+    if (!CSharpBridge::g_initialized)
+        return 0;
+
+    return g_plugins.getPluginsNum();
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetPluginInfo(int pluginId, CSharpPluginInfo* outInfo)
+{
+    if (!CSharpBridge::g_initialized || !outInfo || pluginId < 0)
+        return false;
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(pluginId);
+    if (!plugin)
+        return false;
+
+    // Fill plugin information
+    strncpy(outInfo->fileName, plugin->getName(), sizeof(outInfo->fileName) - 1);
+    outInfo->fileName[sizeof(outInfo->fileName) - 1] = '\0';
+
+    strncpy(outInfo->name, plugin->getTitle(), sizeof(outInfo->name) - 1);
+    outInfo->name[sizeof(outInfo->name) - 1] = '\0';
+
+    strncpy(outInfo->version, plugin->getVersion(), sizeof(outInfo->version) - 1);
+    outInfo->version[sizeof(outInfo->version) - 1] = '\0';
+
+    strncpy(outInfo->author, plugin->getAuthor(), sizeof(outInfo->author) - 1);
+    outInfo->author[sizeof(outInfo->author) - 1] = '\0';
+
+    const char* statusStr = plugin->getStatus();
+    strncpy(outInfo->status, statusStr ? statusStr : "", sizeof(outInfo->status) - 1);
+    outInfo->status[sizeof(outInfo->status) - 1] = '\0';
+
+    strncpy(outInfo->url, plugin->getUrl(), sizeof(outInfo->url) - 1);
+    outInfo->url[sizeof(outInfo->url) - 1] = '\0';
+
+    strncpy(outInfo->description, plugin->getDescription(), sizeof(outInfo->description) - 1);
+    outInfo->description[sizeof(outInfo->description) - 1] = '\0';
+
+    outInfo->pluginId = pluginId;
+    outInfo->statusCode = plugin->getStatusCode();
+    outInfo->isValid = plugin->isValid();
+    outInfo->isRunning = plugin->isExecutable();
+    outInfo->isPaused = plugin->isPaused();
+
+    return true;
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindPlugin(const char* fileName)
+{
+    if (!CSharpBridge::g_initialized || !fileName)
+        return -1;
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(fileName);
+    return plugin ? plugin->getId() : -1;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsPluginValid(int pluginId)
+{
+    if (!CSharpBridge::g_initialized || pluginId < 0)
+        return false;
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(pluginId);
+    return plugin ? plugin->isValid() : false;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsPluginRunning(int pluginId)
+{
+    if (!CSharpBridge::g_initialized || pluginId < 0)
+        return false;
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(pluginId);
+    return plugin ? plugin->isExecutable() : false;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL PausePlugin(int pluginId)
+{
+    if (!CSharpBridge::g_initialized || pluginId < 0)
+        return false;
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(pluginId);
+    if (!plugin)
+        return false;
+
+    plugin->pausePlugin();
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL UnpausePlugin(int pluginId)
+{
+    if (!CSharpBridge::g_initialized || pluginId < 0)
+        return false;
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(pluginId);
+    if (!plugin)
+        return false;
+
+    plugin->unpausePlugin();
+    return true;
+}
+
+// Function call system implementation
+CSHARP_EXPORT bool CSHARP_CALL CallFuncBegin(const char* funcName, const char* pluginName)
+{
+    if (!CSharpBridge::g_initialized || !funcName)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    // Clean up any previous call
+    CSharpBridge::CleanupCallFunc();
+
+    CPluginMngr::CPlugin* plugin = nullptr;
+    if (pluginName && strlen(pluginName) > 0)
+    {
+        plugin = CSharpBridge::FindPluginByName(pluginName);
+    }
+    else
+    {
+        // Find first valid plugin with this function
+        for (CPluginMngr::iterator iter = g_plugins.begin(); iter; ++iter)
+        {
+            if ((*iter).isValid() && (*iter).isExecutable())
+            {
+                int funcId = amx_FindPublic((*iter).getAMX(), funcName);
+                if (funcId >= 0)
+                {
+                    plugin = &(*iter);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!plugin || !plugin->isValid() || !plugin->isExecutable())
+        return false;
+
+    int funcId = amx_FindPublic(plugin->getAMX(), funcName);
+    if (funcId < 0)
+        return false;
+
+    CSharpBridge::g_callFuncInfo.plugin = plugin;
+    CSharpBridge::g_callFuncInfo.funcId = funcId;
+    CSharpBridge::g_callFuncInfo.currentParam = 0;
+    CSharpBridge::g_callFuncInfo.isActive = true;
+
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL CallFuncBeginById(int funcId, int pluginId)
+{
+    if (!CSharpBridge::g_initialized || funcId < 0 || pluginId < 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    // Clean up any previous call
+    CSharpBridge::CleanupCallFunc();
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(pluginId);
+    if (!plugin || !plugin->isValid() || !plugin->isExecutable())
+        return false;
+
+    CSharpBridge::g_callFuncInfo.plugin = plugin;
+    CSharpBridge::g_callFuncInfo.funcId = funcId;
+    CSharpBridge::g_callFuncInfo.currentParam = 0;
+    CSharpBridge::g_callFuncInfo.isActive = true;
+
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL CallFuncPushInt(int value)
+{
+    if (!CSharpBridge::g_initialized || !CSharpBridge::g_callFuncInfo.isActive)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    AMX* amx = CSharpBridge::g_callFuncInfo.plugin->getAMX();
+    if (!amx)
+        return false;
+
+    cell amxValue = static_cast<cell>(value);
+    int error = amx_Push(amx, amxValue);
+
+    if (error == AMX_ERR_NONE)
+    {
+        CSharpBridge::g_callFuncInfo.currentParam++;
+        return true;
+    }
+
+    return false;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL CallFuncPushFloat(float value)
+{
+    if (!CSharpBridge::g_initialized || !CSharpBridge::g_callFuncInfo.isActive)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    AMX* amx = CSharpBridge::g_callFuncInfo.plugin->getAMX();
+    if (!amx)
+        return false;
+
+    cell amxValue = amx_ftoc(value);
+    int error = amx_Push(amx, amxValue);
+
+    if (error == AMX_ERR_NONE)
+    {
+        CSharpBridge::g_callFuncInfo.currentParam++;
+        return true;
+    }
+
+    return false;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL CallFuncPushString(const char* value)
+{
+    if (!CSharpBridge::g_initialized || !CSharpBridge::g_callFuncInfo.isActive || !value)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    AMX* amx = CSharpBridge::g_callFuncInfo.plugin->getAMX();
+    if (!amx)
+        return false;
+
+    cell amxAddr;
+    int error = amx_PushString(amx, &amxAddr, nullptr, value, 0, 0);
+
+    if (error == AMX_ERR_NONE)
+    {
+        CSharpBridge::g_callFuncInfo.currentParam++;
+        return true;
+    }
+
+    return false;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL CallFuncPushArray(const int* array, int size)
+{
+    if (!CSharpBridge::g_initialized || !CSharpBridge::g_callFuncInfo.isActive || !array || size <= 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    AMX* amx = CSharpBridge::g_callFuncInfo.plugin->getAMX();
+    if (!amx)
+        return false;
+
+    cell amxAddr;
+    cell* physAddr;
+    int error = amx_PushArray(amx, &amxAddr, &physAddr, reinterpret_cast<const cell*>(array), size);
+
+    if (error == AMX_ERR_NONE)
+    {
+        CSharpBridge::g_callFuncInfo.currentParam++;
+        return true;
+    }
+
+    return false;
+}
+
+CSHARP_EXPORT int CSHARP_CALL CallFuncEnd()
+{
+    if (!CSharpBridge::g_initialized || !CSharpBridge::g_callFuncInfo.isActive)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    AMX* amx = CSharpBridge::g_callFuncInfo.plugin->getAMX();
+    if (!amx)
+    {
+        CSharpBridge::CleanupCallFunc();
+        return 0;
+    }
+
+    cell retVal = 0;
+    int error = amx_Exec(amx, &retVal, CSharpBridge::g_callFuncInfo.funcId);
+
+    // Clean up the call
+    CSharpBridge::CleanupCallFunc();
+
+    if (error == AMX_ERR_NONE)
+        return static_cast<int>(retVal);
+
+    return 0;
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetFuncId(const char* funcName, int pluginId)
+{
+    if (!CSharpBridge::g_initialized || !funcName || pluginId < 0)
+        return -1;
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(pluginId);
+    if (!plugin || !plugin->isValid())
+        return -1;
+
+    return amx_FindPublic(plugin->getAMX(), funcName);
+}
+
+// Forward system implementation
+CSHARP_EXPORT int CSHARP_CALL CreateForward(const char* funcName, int execType, int paramTypes[], int paramCount)
+{
+    if (!CSharpBridge::g_initialized || !funcName || paramCount < 0 || paramCount > 16)
+        return -1;
+
+    CSharpBridge::AutoLock lock;
+
+    int forwardId = registerForward(funcName, static_cast<ForwardExecType>(execType),
+                                   paramTypes, paramCount);
+
+    if (forwardId >= 0)
+    {
+        CSharpBridge::ForwardCallbackInfo* info = new CSharpBridge::ForwardCallbackInfo();
+        info->forwardId = forwardId;
+        info->callback = nullptr;
+        info->name = funcName;
+        info->execType = execType;
+        info->paramCount = paramCount;
+
+        for (int i = 0; i < paramCount && i < 16; i++)
+        {
+            info->paramTypes[i] = paramTypes[i];
+        }
+
+        CSharpBridge::g_forwardCallbacks.append(info);
+    }
+
+    return forwardId;
+}
+
+CSHARP_EXPORT int CSHARP_CALL CreateSPForward(const char* funcName, int pluginId, int paramTypes[], int paramCount)
+{
+    if (!CSharpBridge::g_initialized || !funcName || pluginId < 0 || paramCount < 0 || paramCount > 16)
+        return -1;
+
+    CSharpBridge::AutoLock lock;
+
+    CPluginMngr::CPlugin* plugin = g_plugins.findPlugin(pluginId);
+    if (!plugin || !plugin->isValid())
+        return -1;
+
+    int forwardId = registerSPForward(plugin->getAMX(), funcName, paramTypes, paramCount);
+
+    if (forwardId >= 0)
+    {
+        CSharpBridge::ForwardCallbackInfo* info = new CSharpBridge::ForwardCallbackInfo();
+        info->forwardId = forwardId;
+        info->callback = nullptr;
+        info->name = funcName;
+        info->execType = 0; // Single plugin forward
+        info->paramCount = paramCount;
+
+        for (int i = 0; i < paramCount && i < 16; i++)
+        {
+            info->paramTypes[i] = paramTypes[i];
+        }
+
+        CSharpBridge::g_forwardCallbacks.append(info);
+    }
+
+    return forwardId;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL DestroyForward(int forwardId)
+{
+    if (!CSharpBridge::g_initialized || forwardId < 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    // Find and remove forward callback info
+    for (size_t i = 0; i < CSharpBridge::g_forwardCallbacks.length(); i++)
+    {
+        CSharpBridge::ForwardCallbackInfo* info = CSharpBridge::g_forwardCallbacks[i];
+        if (info && info->forwardId == forwardId)
+        {
+            delete info;
+            CSharpBridge::g_forwardCallbacks[i] = nullptr;
+            break;
+        }
+    }
+
+    unregisterSPForward(forwardId);
+    return true;
+}
+
+CSHARP_EXPORT int CSHARP_CALL ExecuteForward(int forwardId, int params[], int paramCount)
+{
+    if (!CSharpBridge::g_initialized || forwardId < 0 || paramCount < 0)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    cell retVal = 0;
+    int result = executeForwards(forwardId, retVal, params, paramCount);
+
+    return (result > 0) ? static_cast<int>(retVal) : 0;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetForwardInfo(int forwardId, CSharpForwardInfo* outInfo)
+{
+    if (!CSharpBridge::g_initialized || forwardId < 0 || !outInfo)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    // Find forward info
+    for (size_t i = 0; i < CSharpBridge::g_forwardCallbacks.length(); i++)
+    {
+        CSharpBridge::ForwardCallbackInfo* info = CSharpBridge::g_forwardCallbacks[i];
+        if (info && info->forwardId == forwardId)
+        {
+            strncpy(outInfo->name, info->name.chars(), sizeof(outInfo->name) - 1);
+            outInfo->name[sizeof(outInfo->name) - 1] = '\0';
+
+            outInfo->forwardId = forwardId;
+            outInfo->paramCount = info->paramCount;
+            outInfo->execType = info->execType;
+            outInfo->isValid = true;
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Server functions implementation
+CSHARP_EXPORT bool CSHARP_CALL ServerPrint(const char* message)
+{
+    if (!CSharpBridge::g_initialized || !message)
+        return false;
+
+    SERVER_PRINT(message);
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL ServerCmd(const char* command)
+{
+    if (!CSharpBridge::g_initialized || !command)
+        return false;
+
+    SERVER_COMMAND(command);
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL ServerExec()
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    SERVER_EXECUTE();
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsDedicatedServer()
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    return IS_DEDICATED_SERVER() != 0;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsLinuxServer()
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+#ifdef __linux__
+    return true;
+#else
+    return false;
+#endif
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsMapValid(const char* mapName)
+{
+    if (!CSharpBridge::g_initialized || !mapName)
+        return false;
+
+    return IS_MAP_VALID(mapName) != 0;
+}
+
+// Client functions implementation
+CSHARP_EXPORT int CSHARP_CALL GetPlayersNum(bool includeConnecting)
+{
+    if (!CSharpBridge::g_initialized)
+        return 0;
+
+    int count = 0;
+    for (int i = 1; i <= gpGlobals->maxClients; i++)
+    {
+        CPlayer* pPlayer = GET_PLAYER_POINTER_I(i);
+        if (pPlayer && (pPlayer->ingame || (includeConnecting && pPlayer->initialized)))
+            count++;
+    }
+
+    return count;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsUserBot(int clientId)
+{
+    if (!CSharpBridge::g_initialized || clientId < 1 || clientId > gpGlobals->maxClients)
+        return false;
+
+    CPlayer* pPlayer = GET_PLAYER_POINTER_I(clientId);
+    if (!pPlayer)
+        return false;
+
+    return pPlayer->IsBot();
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsUserConnected(int clientId)
+{
+    if (!CSharpBridge::g_initialized || clientId < 1 || clientId > gpGlobals->maxClients)
+        return false;
+
+    CPlayer* pPlayer = GET_PLAYER_POINTER_I(clientId);
+    return pPlayer && pPlayer->ingame;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsUserAlive(int clientId)
+{
+    if (!CSharpBridge::g_initialized || clientId < 1 || clientId > gpGlobals->maxClients)
+        return false;
+
+    CPlayer* pPlayer = GET_PLAYER_POINTER_I(clientId);
+    if (!pPlayer || !pPlayer->pEdict)
+        return false;
+
+    return pPlayer->IsAlive();
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetUserTime(int clientId, bool playtime)
+{
+    if (!CSharpBridge::g_initialized || clientId < 1 || clientId > gpGlobals->maxClients)
+        return 0;
+
+    CPlayer* pPlayer = GET_PLAYER_POINTER_I(clientId);
+    if (!pPlayer)
+        return 0;
+
+    if (playtime)
+        return static_cast<int>(gpGlobals->time - pPlayer->time);
+    else
+        return static_cast<int>(gpGlobals->time - pPlayer->connectTime);
+}
+
+CSHARP_EXPORT bool CSHARP_CALL ClientCmd(int clientId, const char* command)
+{
+    if (!CSharpBridge::g_initialized || !command)
+        return false;
+
+    if (clientId < 1 || clientId > gpGlobals->maxClients)
+        return false;
+
+    CPlayer* pPlayer = GET_PLAYER_POINTER_I(clientId);
+    if (!pPlayer || !pPlayer->pEdict)
+        return false;
+
+    CLIENT_COMMAND(pPlayer->pEdict, command);
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL FakeClientCmd(int clientId, const char* command)
+{
+    if (!CSharpBridge::g_initialized || !command)
+        return false;
+
+    if (clientId < 1 || clientId > gpGlobals->maxClients)
+        return false;
+
+    CPlayer* pPlayer = GET_PLAYER_POINTER_I(clientId);
+    if (!pPlayer || !pPlayer->pEdict)
+        return false;
+
+    FAKE_CLIENT_COMMAND(pPlayer->pEdict, command);
+    return true;
+}
+
+// Admin management functions implementation
+CSHARP_EXPORT bool CSHARP_CALL AdminsPush(const char* authData, const char* password, int access, int flags)
+{
+    if (!CSharpBridge::g_initialized || !authData)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    AdminInfo adminInfo;
+    adminInfo.setAccess(access);
+    adminInfo.setFlags(flags);
+    adminInfo.setAuth(authData);
+
+    if (password && strlen(password) > 0)
+        adminInfo.setPassword(password);
+
+    g_admins.push_back(adminInfo);
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL AdminsFlush()
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    g_admins.clear();
+    return true;
+}
+
+CSHARP_EXPORT int CSHARP_CALL AdminsNum()
+{
+    if (!CSharpBridge::g_initialized)
+        return 0;
+
+    return static_cast<int>(g_admins.size());
+}
+
+CSHARP_EXPORT bool CSHARP_CALL AdminsLookup(int index, int property, char* buffer, int bufferSize, int* outValue)
+{
+    if (!CSharpBridge::g_initialized || index < 0 || index >= static_cast<int>(g_admins.size()))
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    const AdminInfo& admin = g_admins[index];
+
+    switch (property)
+    {
+        case 0: // Auth data
+            if (buffer && bufferSize > 0)
+            {
+                strncpy(buffer, admin.getAuth(), bufferSize - 1);
+                buffer[bufferSize - 1] = '\0';
+                return true;
+            }
+            break;
+
+        case 1: // Password
+            if (buffer && bufferSize > 0)
+            {
+                strncpy(buffer, admin.getPassword(), bufferSize - 1);
+                buffer[bufferSize - 1] = '\0';
+                return true;
+            }
+            break;
+
+        case 2: // Access flags
+            if (outValue)
+            {
+                *outValue = admin.getAccess();
+                return true;
+            }
+            break;
+
+        case 3: // Admin flags
+            if (outValue)
+            {
+                *outValue = admin.getFlags();
+                return true;
+            }
+            break;
+    }
+
+    return false;
+}
+
+// Logging functions implementation
+CSHARP_EXPORT bool CSHARP_CALL LogToFile(const char* fileName, const char* message)
+{
+    if (!CSharpBridge::g_initialized || !fileName || !message)
+        return false;
+
+    UTIL_LogPrintf("[AMXX] %s", message);
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL LogAmx(const char* message)
+{
+    if (!CSharpBridge::g_initialized || !message)
+        return false;
+
+    AMXXLOG_Log("[AMXX] %s", message);
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL LogError(int errorCode, const char* message)
+{
+    if (!CSharpBridge::g_initialized || !message)
+        return false;
+
+    LogError(static_cast<AMX*>(nullptr), errorCode, "%s", message);
+    return true;
+}
+
+CSHARP_EXPORT int CSHARP_CALL RegisterLogCallback(CSharpLogCallback callback)
+{
+    if (!CSharpBridge::g_initialized || !callback)
+        return -1;
+
+    return CSharpBridge::RegisterLogCallbackInternal(callback);
+}
+
+CSHARP_EXPORT bool CSHARP_CALL UnregisterLogCallback(int callbackId)
+{
+    if (!CSharpBridge::g_initialized || callbackId < 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    // Find and remove log callback
+    for (size_t i = 0; i < CSharpBridge::g_logCallbacks.length(); i++)
+    {
+        CSharpBridge::LogCallbackInfo* info = CSharpBridge::g_logCallbacks[i];
+        if (info && info->callbackId == callbackId)
+        {
+            delete info;
+            CSharpBridge::g_logCallbacks[i] = nullptr;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// Library management functions implementation
+CSHARP_EXPORT bool CSHARP_CALL RegisterLibrary(const char* libraryName)
+{
+    if (!CSharpBridge::g_initialized || !libraryName)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    g_libraries.push_back(ke::AString(libraryName));
+    return true;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL LibraryExists(const char* libraryName)
+{
+    if (!CSharpBridge::g_initialized || !libraryName)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    for (size_t i = 0; i < g_libraries.length(); i++)
+    {
+        if (strcmp(g_libraries[i].chars(), libraryName) == 0)
+            return true;
+    }
+
+    return false;
+}
+
+// Utility functions implementation
+CSHARP_EXPORT bool CSHARP_CALL AbortExecution(int errorCode, const char* message)
+{
+    if (!CSharpBridge::g_initialized)
+        return false;
+
+    // This would typically abort the current AMX execution
+    // Implementation depends on the current execution context
+    if (message)
+        AMXXLOG_Log("[ABORT] Error %d: %s", errorCode, message);
+
+    return true;
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetHeapSpace()
+{
+    if (!CSharpBridge::g_initialized)
+        return 0;
+
+    // This would need access to current AMX context
+    // Simplified implementation
+    return 65536; // Default heap space
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetNumArgs()
+{
+    if (!CSharpBridge::g_initialized)
+        return 0;
+
+    // This would need access to current AMX context
+    // Simplified implementation
+    return 0;
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SwapChars(char* string, int char1, int char2)
+{
+    if (!CSharpBridge::g_initialized || !string)
+        return false;
+
+    int len = strlen(string);
+    for (int i = 0; i < len; i++)
+    {
+        if (string[i] == char1)
+            string[i] = char2;
+        else if (string[i] == char2)
+            string[i] = char1;
+    }
+
+    return true;
+}
+
+CSHARP_EXPORT int CSHARP_CALL RandomInt(int max)
+{
+    if (!CSharpBridge::g_initialized || max <= 0)
+        return 0;
+
+    return RANDOM_LONG(0, max - 1);
+}
+
+CSHARP_EXPORT int CSHARP_CALL MinInt(int a, int b)
+{
+    return (a < b) ? a : b;
+}
+
+CSHARP_EXPORT int CSHARP_CALL MaxInt(int a, int b)
+{
+    return (a > b) ? a : b;
+}
+
+CSHARP_EXPORT int CSHARP_CALL ClampInt(int value, int min, int max)
+{
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+// Internal helper functions implementation
+int CSharpBridge::RegisterLogCallbackInternal(CSharpLogCallback callback)
+{
+    AutoLock lock;
+
+    LogCallbackInfo* info = new LogCallbackInfo();
+    info->callbackId = g_nextLogCallbackId++;
+    info->callback = callback;
+
+    g_logCallbacks.append(info);
+
+    return info->callbackId;
+}
+
+void CSharpBridge::HandleLogCallback(int logLevel, const char* message)
+{
+    AutoLock lock;
+
+    for (size_t i = 0; i < g_logCallbacks.length(); i++)
+    {
+        LogCallbackInfo* info = g_logCallbacks[i];
+        if (info && info->callback)
+        {
+            info->callback(logLevel, message);
+        }
+    }
+}
+
+bool CSharpBridge::InitializeCallFunc()
+{
+    g_callFuncInfo.plugin = nullptr;
+    g_callFuncInfo.funcId = -1;
+    g_callFuncInfo.currentParam = 0;
+    g_callFuncInfo.isActive = false;
+    return true;
+}
+
+void CSharpBridge::CleanupCallFunc()
+{
+    g_callFuncInfo.plugin = nullptr;
+    g_callFuncInfo.funcId = -1;
+    g_callFuncInfo.currentParam = 0;
+    g_callFuncInfo.isActive = false;
+}
+
+CPluginMngr::CPlugin* CSharpBridge::FindPluginByName(const char* pluginName)
+{
+    if (!pluginName)
+        return nullptr;
+
+    for (CPluginMngr::iterator iter = g_plugins.begin(); iter; ++iter)
+    {
+        if ((*iter).isValid() && strcmp((*iter).getName(), pluginName) == 0)
+        {
+            return &(*iter);
+        }
+    }
+
+    return nullptr;
+}
+
+CPluginMngr::CPlugin* CSharpBridge::FindPluginById(int pluginId)
+{
+    return g_plugins.findPlugin(pluginId);
 }

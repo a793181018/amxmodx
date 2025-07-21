@@ -706,5 +706,177 @@ namespace SamplePlugin
         }
 
         #endregion
+
+        #region Core AMX Features Demo
+
+        /// <summary>
+        /// 核心AMX功能演示 / Core AMX functionality demonstration
+        /// </summary>
+        private static void DemonstrateCoreAmxFeatures()
+        {
+            Console.WriteLine("=== 核心AMX功能演示 / Core AMX Features Demo ===");
+
+            // 1. 插件管理演示 / Plugin management demo
+            Console.WriteLine("\n1. 插件管理 / Plugin Management:");
+            int pluginCount = CoreAmxManager.GetPluginsNum();
+            Console.WriteLine($"   当前插件数量 / Current plugins: {pluginCount}");
+
+            // 查找admin插件 / Find admin plugin
+            int adminPluginId = CoreAmxManager.FindPlugin("admin.amxx");
+            if (adminPluginId >= 0)
+            {
+                var pluginInfo = CoreAmxManager.GetPluginInfo(adminPluginId);
+                if (pluginInfo.HasValue)
+                {
+                    Console.WriteLine($"   找到admin插件 / Found admin plugin: {pluginInfo.Value.Name}");
+                    Console.WriteLine($"   版本 / Version: {pluginInfo.Value.Version}");
+                    Console.WriteLine($"   状态 / Status: {pluginInfo.Value.Status}");
+                }
+            }
+
+            // 2. 服务器信息演示 / Server information demo
+            Console.WriteLine("\n2. 服务器信息 / Server Information:");
+            bool isDedicated = CoreAmxManager.IsDedicatedServer();
+            bool isLinux = CoreAmxManager.IsLinuxServer();
+            Console.WriteLine($"   专用服务器 / Dedicated: {isDedicated}");
+            Console.WriteLine($"   Linux系统 / Linux: {isLinux}");
+
+            // 3. 玩家信息演示 / Player information demo
+            Console.WriteLine("\n3. 玩家信息 / Player Information:");
+            int playerCount = CoreAmxManager.GetPlayersNum();
+            int connectingCount = CoreAmxManager.GetPlayersNum(true);
+            Console.WriteLine($"   在线玩家 / Online players: {playerCount}");
+            Console.WriteLine($"   包含连接中 / Including connecting: {connectingCount}");
+
+            // 4. 管理员管理演示 / Admin management demo
+            Console.WriteLine("\n4. 管理员管理 / Admin Management:");
+
+            // 清空并添加测试管理员 / Clear and add test admins
+            CoreAmxManager.AdminsFlush();
+            CoreAmxManager.AdminsPush("STEAM_0:1:12345", "testpass", 1023, 0);
+            CoreAmxManager.AdminsPush("192.168.1.100", "", 511, 1);
+
+            int adminCount = CoreAmxManager.AdminsNum();
+            Console.WriteLine($"   管理员数量 / Admin count: {adminCount}");
+
+            for (int i = 0; i < adminCount; i++)
+            {
+                var auth = CoreAmxManager.AdminsLookup(i, CoreAmxManager.AdminProperty.Auth) as string;
+                var access = CoreAmxManager.AdminsLookup(i, CoreAmxManager.AdminProperty.Access);
+                Console.WriteLine($"   管理员 {i} / Admin {i}: {auth}, 权限 / Access: {access}");
+            }
+
+            // 5. Forward系统演示 / Forward system demo
+            Console.WriteLine("\n5. Forward系统 / Forward System:");
+
+            int forwardId = CoreAmxManager.CreateForward(
+                "test_forward",
+                CoreAmxManager.ForwardExecType.Ignore,
+                CoreAmxManager.ForwardParamType.Cell,
+                CoreAmxManager.ForwardParamType.String
+            );
+
+            if (forwardId >= 0)
+            {
+                Console.WriteLine($"   创建Forward成功 / Forward created: ID {forwardId}");
+
+                var forwardInfo = CoreAmxManager.GetForwardInfo(forwardId);
+                if (forwardInfo.HasValue)
+                {
+                    Console.WriteLine($"   Forward名称 / Name: {forwardInfo.Value.Name}");
+                    Console.WriteLine($"   参数数量 / Param count: {forwardInfo.Value.ParamCount}");
+                }
+
+                // 执行Forward / Execute forward
+                int result = CoreAmxManager.ExecuteForward(forwardId, 123, 0);
+                Console.WriteLine($"   Forward执行结果 / Execution result: {result}");
+
+                // 销毁Forward / Destroy forward
+                CoreAmxManager.DestroyForward(forwardId);
+                Console.WriteLine("   Forward已销毁 / Forward destroyed");
+            }
+
+            // 6. 日志系统演示 / Logging system demo
+            Console.WriteLine("\n6. 日志系统 / Logging System:");
+
+            // 注册日志回调 / Register log callback
+            int logCallbackId = CoreAmxManager.RegisterLogCallback((level, message) =>
+            {
+                Console.WriteLine($"   [日志回调 / Log Callback] {level}: {message}");
+            });
+
+            if (logCallbackId >= 0)
+            {
+                Console.WriteLine($"   日志回调注册成功 / Log callback registered: ID {logCallbackId}");
+
+                // 测试日志记录 / Test logging
+                CoreAmxManager.LogAmx("这是一条测试日志 / This is a test log");
+                CoreAmxManager.LogError(404, "测试错误日志 / Test error log");
+
+                // 取消注册 / Unregister
+                CoreAmxManager.UnregisterLogCallback(logCallbackId);
+                Console.WriteLine("   日志回调已取消 / Log callback unregistered");
+            }
+
+            // 7. 工具函数演示 / Utility functions demo
+            Console.WriteLine("\n7. 工具函数 / Utility Functions:");
+
+            int randomNum = CoreAmxManager.RandomInt(100);
+            int minVal = CoreAmxManager.MinInt(10, 20);
+            int maxVal = CoreAmxManager.MaxInt(10, 20);
+            int clampedVal = CoreAmxManager.ClampInt(25, 10, 20);
+
+            Console.WriteLine($"   随机数(0-99) / Random(0-99): {randomNum}");
+            Console.WriteLine($"   Min(10,20): {minVal}");
+            Console.WriteLine($"   Max(10,20): {maxVal}");
+            Console.WriteLine($"   Clamp(25,10,20): {clampedVal}");
+
+            string originalText = "Hello World";
+            string swappedText = CoreAmxManager.SwapChars(originalText, 'l', 'L');
+            Console.WriteLine($"   字符交换 / Char swap: '{originalText}' -> '{swappedText}'");
+
+            // 8. 库管理演示 / Library management demo
+            Console.WriteLine("\n8. 库管理 / Library Management:");
+
+            CoreAmxManager.RegisterLibrary("csharp_demo_lib");
+            bool libExists = CoreAmxManager.LibraryExists("csharp_demo_lib");
+            Console.WriteLine($"   注册库 / Register library: csharp_demo_lib");
+            Console.WriteLine($"   库存在 / Library exists: {libExists}");
+
+            Console.WriteLine("\n=== 核心AMX功能演示完成 / Core AMX Demo Completed ===");
+        }
+
+        /// <summary>
+        /// 运行完整演示 / Run complete demonstration
+        /// </summary>
+        public static void RunCompleteDemo()
+        {
+            Console.WriteLine("AMX Mod X C# 扩展完整演示 / AMX Mod X C# Extension Complete Demo");
+            Console.WriteLine(new string('=', 80));
+
+            try
+            {
+                // 运行原有演示 / Run original demos
+                DemonstrateCvarSystem();
+                DemonstrateMenuSystem();
+                DemonstrateGameConfig();
+                DemonstrateNativeSystem();
+                DemonstrateMessageSystem();
+                DemonstrateDataPackSystem();
+
+                // 运行核心AMX功能演示 / Run core AMX features demo
+                DemonstrateCoreAmxFeatures();
+
+                Console.WriteLine("\n" + new string('=', 80));
+                Console.WriteLine("所有演示完成！/ All demonstrations completed!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"演示过程中发生错误 / Error during demonstration: {ex.Message}");
+                Console.WriteLine($"详细信息 / Details: {ex.StackTrace}");
+            }
+        }
+
+        #endregion
     }
 }

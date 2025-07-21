@@ -390,4 +390,440 @@ namespace AmxModX.Examples
             }
         }
     }
+
+    /// <summary>
+    /// 核心AMX功能使用示例 / Core AMX functionality usage examples
+    /// </summary>
+    public static class CoreAmxExamples
+    {
+        /// <summary>
+        /// 插件管理示例 / Plugin management example
+        /// </summary>
+        public static void PluginManagementExample()
+        {
+            Console.WriteLine("=== 插件管理示例 / Plugin Management Example ===");
+
+            // 获取插件数量 / Get plugins number
+            int pluginCount = CoreAmxManager.GetPluginsNum();
+            Console.WriteLine($"当前加载的插件数量 / Current loaded plugins: {pluginCount}");
+
+            // 遍历所有插件 / Iterate through all plugins
+            for (int i = 0; i < pluginCount; i++)
+            {
+                var pluginInfo = CoreAmxManager.GetPluginInfo(i);
+                if (pluginInfo.HasValue)
+                {
+                    var info = pluginInfo.Value;
+                    Console.WriteLine($"插件 {i} / Plugin {i}:");
+                    Console.WriteLine($"  名称 / Name: {info.Name}");
+                    Console.WriteLine($"  文件 / File: {info.FileName}");
+                    Console.WriteLine($"  版本 / Version: {info.Version}");
+                    Console.WriteLine($"  作者 / Author: {info.Author}");
+                    Console.WriteLine($"  状态 / Status: {info.Status}");
+                    Console.WriteLine($"  是否运行 / Is Running: {info.IsRunning}");
+                    Console.WriteLine($"  是否暂停 / Is Paused: {info.IsPaused}");
+                }
+            }
+
+            // 查找特定插件 / Find specific plugin
+            int pluginId = CoreAmxManager.FindPlugin("admin.amxx");
+            if (pluginId >= 0)
+            {
+                Console.WriteLine($"找到admin.amxx插件，ID: {pluginId}");
+
+                // 检查插件状态 / Check plugin status
+                bool isValid = CoreAmxManager.IsPluginValid(pluginId);
+                bool isRunning = CoreAmxManager.IsPluginRunning(pluginId);
+                Console.WriteLine($"插件有效: {isValid}, 运行中: {isRunning}");
+            }
+        }
+
+        /// <summary>
+        /// 函数调用示例 / Function call example
+        /// </summary>
+        public static void FunctionCallExample()
+        {
+            Console.WriteLine("=== 函数调用示例 / Function Call Example ===");
+
+            // 调用插件函数示例 / Call plugin function example
+            if (CoreAmxManager.CallFuncBegin("my_custom_function", "myplugin.amxx"))
+            {
+                // 压入参数 / Push parameters
+                CoreAmxManager.CallFuncPushInt(123);
+                CoreAmxManager.CallFuncPushFloat(45.67f);
+                CoreAmxManager.CallFuncPushString("Hello World");
+                CoreAmxManager.CallFuncPushArray(new int[] { 1, 2, 3, 4, 5 });
+
+                // 执行函数并获取返回值 / Execute function and get return value
+                int result = CoreAmxManager.CallFuncEnd();
+                Console.WriteLine($"函数返回值 / Function return value: {result}");
+            }
+            else
+            {
+                Console.WriteLine("函数调用失败 / Function call failed");
+            }
+
+            // 通过ID调用函数 / Call function by ID
+            int funcId = CoreAmxManager.GetFuncId("another_function", 0);
+            if (funcId >= 0)
+            {
+                if (CoreAmxManager.CallFuncBeginById(funcId, 0))
+                {
+                    CoreAmxManager.CallFuncPushString("Parameter");
+                    int result = CoreAmxManager.CallFuncEnd();
+                    Console.WriteLine($"通过ID调用函数返回值 / Function call by ID return value: {result}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Forward系统示例 / Forward system example
+        /// </summary>
+        public static void ForwardSystemExample()
+        {
+            Console.WriteLine("=== Forward系统示例 / Forward System Example ===");
+
+            // 创建全局Forward / Create global forward
+            int forwardId = CoreAmxManager.CreateForward(
+                "player_connect",
+                CoreAmxManager.ForwardExecType.Ignore,
+                CoreAmxManager.ForwardParamType.Cell,    // 玩家ID / Player ID
+                CoreAmxManager.ForwardParamType.String,  // 玩家名称 / Player name
+                CoreAmxManager.ForwardParamType.String   // IP地址 / IP address
+            );
+
+            if (forwardId >= 0)
+            {
+                Console.WriteLine($"创建Forward成功，ID: {forwardId}");
+
+                // 获取Forward信息 / Get forward information
+                var forwardInfo = CoreAmxManager.GetForwardInfo(forwardId);
+                if (forwardInfo.HasValue)
+                {
+                    var info = forwardInfo.Value;
+                    Console.WriteLine($"Forward名称: {info.Name}");
+                    Console.WriteLine($"参数数量: {info.ParamCount}");
+                    Console.WriteLine($"执行类型: {info.ExecType}");
+                }
+
+                // 执行Forward / Execute forward
+                int result = CoreAmxManager.ExecuteForward(forwardId, 1, 0, 0); // 参数需要转换为int
+                Console.WriteLine($"Forward执行结果: {result}");
+
+                // 销毁Forward / Destroy forward
+                CoreAmxManager.DestroyForward(forwardId);
+                Console.WriteLine("Forward已销毁");
+            }
+
+            // 创建单插件Forward / Create single plugin forward
+            int spForwardId = CoreAmxManager.CreateSPForward(
+                "my_callback",
+                0, // 插件ID
+                CoreAmxManager.ForwardParamType.Cell,
+                CoreAmxManager.ForwardParamType.Float
+            );
+
+            if (spForwardId >= 0)
+            {
+                Console.WriteLine($"创建单插件Forward成功，ID: {spForwardId}");
+                CoreAmxManager.DestroyForward(spForwardId);
+            }
+        }
+
+        /// <summary>
+        /// 服务器管理示例 / Server management example
+        /// </summary>
+        public static void ServerManagementExample()
+        {
+            Console.WriteLine("=== 服务器管理示例 / Server Management Example ===");
+
+            // 服务器信息 / Server information
+            bool isDedicated = CoreAmxManager.IsDedicatedServer();
+            bool isLinux = CoreAmxManager.IsLinuxServer();
+            Console.WriteLine($"专用服务器 / Dedicated Server: {isDedicated}");
+            Console.WriteLine($"Linux服务器 / Linux Server: {isLinux}");
+
+            // 服务器打印 / Server print
+            CoreAmxManager.ServerPrint("这是一条服务器消息 / This is a server message");
+
+            // 检查地图有效性 / Check map validity
+            bool isMapValid = CoreAmxManager.IsMapValid("de_dust2");
+            Console.WriteLine($"de_dust2地图有效性 / de_dust2 map validity: {isMapValid}");
+
+            // 执行服务器命令 / Execute server command
+            CoreAmxManager.ServerCmd("echo \"Hello from C#\"");
+            CoreAmxManager.ServerExec(); // 立即执行命令队列 / Execute command queue immediately
+        }
+
+        /// <summary>
+        /// 客户端管理示例 / Client management example
+        /// </summary>
+        public static void ClientManagementExample()
+        {
+            Console.WriteLine("=== 客户端管理示例 / Client Management Example ===");
+
+            // 获取玩家信息 / Get player information
+            int playerCount = CoreAmxManager.GetPlayersNum();
+            int connectingCount = CoreAmxManager.GetPlayersNum(true);
+            Console.WriteLine($"在线玩家数 / Online players: {playerCount}");
+            Console.WriteLine($"包含连接中玩家数 / Including connecting players: {connectingCount}");
+
+            // 检查特定玩家 / Check specific player
+            int clientId = 1; // 假设玩家ID为1 / Assume player ID is 1
+            if (CoreAmxManager.IsUserConnected(clientId))
+            {
+                bool isBot = CoreAmxManager.IsUserBot(clientId);
+                bool isAlive = CoreAmxManager.IsUserAlive(clientId);
+                int playTime = CoreAmxManager.GetUserTime(clientId, true);
+
+                Console.WriteLine($"玩家 {clientId} / Player {clientId}:");
+                Console.WriteLine($"  是机器人 / Is Bot: {isBot}");
+                Console.WriteLine($"  存活状态 / Alive Status: {isAlive}");
+                Console.WriteLine($"  游戏时间 / Play Time: {playTime} 秒 / seconds");
+
+                // 向玩家发送命令 / Send command to player
+                CoreAmxManager.ClientCmd(clientId, "say \"Hello from C#\"");
+
+                // 模拟玩家命令 / Simulate player command
+                CoreAmxManager.FakeClientCmd(clientId, "kill");
+            }
+        }
+
+        /// <summary>
+        /// 管理员管理示例 / Admin management example
+        /// </summary>
+        public static void AdminManagementExample()
+        {
+            Console.WriteLine("=== 管理员管理示例 / Admin Management Example ===");
+
+            // 清空现有管理员 / Clear existing admins
+            CoreAmxManager.AdminsFlush();
+            Console.WriteLine("已清空管理员列表 / Admin list cleared");
+
+            // 添加管理员 / Add admins
+            CoreAmxManager.AdminsPush("STEAM_0:1:12345", "password123", 1023, 0); // SteamID管理员
+            CoreAmxManager.AdminsPush("192.168.1.100", "", 511, 1); // IP管理员
+            CoreAmxManager.AdminsPush("AdminName", "admin_pass", 255, 2); // 名称管理员
+
+            int adminCount = CoreAmxManager.AdminsNum();
+            Console.WriteLine($"管理员数量 / Admin count: {adminCount}");
+
+            // 遍历管理员信息 / Iterate through admin information
+            for (int i = 0; i < adminCount; i++)
+            {
+                var auth = CoreAmxManager.AdminsLookup(i, CoreAmxManager.AdminProperty.Auth) as string;
+                var password = CoreAmxManager.AdminsLookup(i, CoreAmxManager.AdminProperty.Password) as string;
+                var access = CoreAmxManager.AdminsLookup(i, CoreAmxManager.AdminProperty.Access);
+                var flags = CoreAmxManager.AdminsLookup(i, CoreAmxManager.AdminProperty.Flags);
+
+                Console.WriteLine($"管理员 {i} / Admin {i}:");
+                Console.WriteLine($"  认证 / Auth: {auth}");
+                Console.WriteLine($"  密码 / Password: {(string.IsNullOrEmpty(password) ? "无 / None" : "***")}");
+                Console.WriteLine($"  权限 / Access: {access}");
+                Console.WriteLine($"  标志 / Flags: {flags}");
+            }
+        }
+
+        /// <summary>
+        /// 日志管理示例 / Logging management example
+        /// </summary>
+        public static void LoggingManagementExample()
+        {
+            Console.WriteLine("=== 日志管理示例 / Logging Management Example ===");
+
+            // 基本日志记录 / Basic logging
+            CoreAmxManager.LogAmx("这是一条AMX日志消息 / This is an AMX log message");
+            CoreAmxManager.LogToFile("custom.log", "自定义日志文件消息 / Custom log file message");
+            CoreAmxManager.LogError(404, "找不到指定的资源 / Resource not found");
+
+            // 注册日志回调 / Register log callback
+            int callbackId = CoreAmxManager.RegisterLogCallback((level, message) =>
+            {
+                string levelStr = level switch
+                {
+                    CoreAmxManager.LogLevel.Debug => "调试 / DEBUG",
+                    CoreAmxManager.LogLevel.Info => "信息 / INFO",
+                    CoreAmxManager.LogLevel.Warning => "警告 / WARNING",
+                    CoreAmxManager.LogLevel.Error => "错误 / ERROR",
+                    CoreAmxManager.LogLevel.Fatal => "致命 / FATAL",
+                    _ => "未知 / UNKNOWN"
+                };
+
+                Console.WriteLine($"[{levelStr}] {message}");
+            });
+
+            if (callbackId >= 0)
+            {
+                Console.WriteLine($"日志回调注册成功，ID: {callbackId}");
+
+                // 模拟一些日志事件 / Simulate some log events
+                CoreAmxManager.LogAmx("测试日志回调 / Test log callback");
+                CoreAmxManager.LogError(500, "服务器内部错误 / Internal server error");
+
+                // 取消注册回调 / Unregister callback
+                CoreAmxManager.UnregisterLogCallback(callbackId);
+                Console.WriteLine("日志回调已取消注册 / Log callback unregistered");
+            }
+        }
+
+        /// <summary>
+        /// 库管理示例 / Library management example
+        /// </summary>
+        public static void LibraryManagementExample()
+        {
+            Console.WriteLine("=== 库管理示例 / Library Management Example ===");
+
+            // 注册库 / Register libraries
+            CoreAmxManager.RegisterLibrary("my_custom_library");
+            CoreAmxManager.RegisterLibrary("database_helper");
+            CoreAmxManager.RegisterLibrary("utility_functions");
+
+            // 检查库是否存在 / Check if libraries exist
+            string[] libraries = { "my_custom_library", "database_helper", "non_existent_lib" };
+
+            foreach (string lib in libraries)
+            {
+                bool exists = CoreAmxManager.LibraryExists(lib);
+                Console.WriteLine($"库 '{lib}' 存在 / Library '{lib}' exists: {exists}");
+            }
+        }
+
+        /// <summary>
+        /// 工具函数示例 / Utility functions example
+        /// </summary>
+        public static void UtilityFunctionsExample()
+        {
+            Console.WriteLine("=== 工具函数示例 / Utility Functions Example ===");
+
+            // 数学工具函数 / Math utility functions
+            int a = 10, b = 20;
+            Console.WriteLine($"Min({a}, {b}) = {CoreAmxManager.MinInt(a, b)}");
+            Console.WriteLine($"Max({a}, {b}) = {CoreAmxManager.MaxInt(a, b)}");
+            Console.WriteLine($"Clamp(25, {a}, {b}) = {CoreAmxManager.ClampInt(25, a, b)}");
+            Console.WriteLine($"Clamp(5, {a}, {b}) = {CoreAmxManager.ClampInt(5, a, b)}");
+
+            // 随机数生成 / Random number generation
+            Console.WriteLine("随机数示例 / Random number examples:");
+            for (int i = 0; i < 5; i++)
+            {
+                int random = CoreAmxManager.RandomInt(100);
+                Console.WriteLine($"  随机数 {i + 1} / Random {i + 1}: {random}");
+            }
+
+            // 字符串工具 / String utilities
+            string text = "Hello World!";
+            string swapped = CoreAmxManager.SwapChars(text, 'l', 'L');
+            Console.WriteLine($"原文本 / Original: {text}");
+            Console.WriteLine($"交换后 / Swapped: {swapped}");
+
+            // 系统信息 / System information
+            int heapSpace = CoreAmxManager.GetHeapSpace();
+            int numArgs = CoreAmxManager.GetNumArgs();
+            Console.WriteLine($"堆空间 / Heap space: {heapSpace} bytes");
+            Console.WriteLine($"参数数量 / Number of args: {numArgs}");
+        }
+
+        /// <summary>
+        /// 综合示例 / Comprehensive example
+        /// </summary>
+        public static void ComprehensiveExample()
+        {
+            Console.WriteLine("=== 综合示例 / Comprehensive Example ===");
+
+            try
+            {
+                // 1. 初始化日志系统 / Initialize logging system
+                int logCallbackId = CoreAmxManager.RegisterLogCallback((level, message) =>
+                {
+                    Console.WriteLine($"[LOG-{level}] {DateTime.Now:HH:mm:ss} - {message}");
+                });
+
+                // 2. 检查服务器状态 / Check server status
+                CoreAmxManager.LogAmx("开始服务器状态检查 / Starting server status check");
+
+                bool isDedicated = CoreAmxManager.IsDedicatedServer();
+                bool isLinux = CoreAmxManager.IsLinuxServer();
+                int playerCount = CoreAmxManager.GetPlayersNum();
+
+                CoreAmxManager.LogAmx($"服务器类型: {(isDedicated ? "专用" : "监听")} / Server type: {(isDedicated ? "Dedicated" : "Listen")}");
+                CoreAmxManager.LogAmx($"操作系统: {(isLinux ? "Linux" : "Windows")} / OS: {(isLinux ? "Linux" : "Windows")}");
+                CoreAmxManager.LogAmx($"在线玩家: {playerCount} / Online players: {playerCount}");
+
+                // 3. 管理插件 / Manage plugins
+                int pluginCount = CoreAmxManager.GetPluginsNum();
+                CoreAmxManager.LogAmx($"加载的插件数量: {pluginCount} / Loaded plugins: {pluginCount}");
+
+                // 4. 设置管理员 / Setup admins
+                CoreAmxManager.AdminsFlush();
+                CoreAmxManager.AdminsPush("STEAM_0:1:12345", "", 1023, 0);
+                CoreAmxManager.LogAmx("管理员配置完成 / Admin configuration completed");
+
+                // 5. 注册库 / Register libraries
+                CoreAmxManager.RegisterLibrary("csharp_integration");
+                CoreAmxManager.LogAmx("C#集成库已注册 / C# integration library registered");
+
+                // 6. 执行一些服务器命令 / Execute some server commands
+                CoreAmxManager.ServerCmd("echo \"C# Integration Active\"");
+                CoreAmxManager.ServerExec();
+
+                CoreAmxManager.LogAmx("综合示例执行完成 / Comprehensive example completed");
+
+                // 清理 / Cleanup
+                CoreAmxManager.UnregisterLogCallback(logCallbackId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"综合示例执行出错 / Error in comprehensive example: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 运行所有示例 / Run all examples
+        /// </summary>
+        public static void RunAllExamples()
+        {
+            Console.WriteLine("开始运行核心AMX功能示例 / Starting Core AMX functionality examples");
+            Console.WriteLine(new string('=', 60));
+
+            try
+            {
+                PluginManagementExample();
+                Console.WriteLine();
+
+                FunctionCallExample();
+                Console.WriteLine();
+
+                ForwardSystemExample();
+                Console.WriteLine();
+
+                ServerManagementExample();
+                Console.WriteLine();
+
+                ClientManagementExample();
+                Console.WriteLine();
+
+                AdminManagementExample();
+                Console.WriteLine();
+
+                LoggingManagementExample();
+                Console.WriteLine();
+
+                LibraryManagementExample();
+                Console.WriteLine();
+
+                UtilityFunctionsExample();
+                Console.WriteLine();
+
+                ComprehensiveExample();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"示例执行出错 / Error running examples: {ex.Message}");
+                Console.WriteLine($"堆栈跟踪 / Stack trace: {ex.StackTrace}");
+            }
+
+            Console.WriteLine(new string('=', 60));
+            Console.WriteLine("核心AMX功能示例执行完成 / Core AMX functionality examples completed");
+        }
+    }
 }

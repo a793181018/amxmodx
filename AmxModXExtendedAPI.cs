@@ -804,4 +804,732 @@ namespace AmxModX
             return ExtendedNativeMethods.DestroyDataPack(packId);
         }
     }
+
+    /// <summary>
+    /// 核心AMX功能管理器 / Core AMX functionality manager
+    /// </summary>
+    public static class CoreAmxManager
+    {
+        private static readonly Dictionary<int, LogCallback> _logCallbacks = new Dictionary<int, LogCallback>();
+
+        #region Plugin Management / 插件管理
+
+        /// <summary>
+        /// 获取插件数量 / Get plugins number
+        /// </summary>
+        /// <returns>插件数量 / Number of plugins</returns>
+        public static int GetPluginsNum()
+        {
+            return ExtendedNativeMethods.GetPluginsNum();
+        }
+
+        /// <summary>
+        /// 获取插件信息 / Get plugin information
+        /// </summary>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <returns>插件信息，失败返回null / Plugin info, returns null on failure</returns>
+        public static PluginInfo? GetPluginInfo(int pluginId)
+        {
+            if (ExtendedNativeMethods.GetPluginInfo(pluginId, out PluginInfo info))
+                return info;
+
+            return null;
+        }
+
+        /// <summary>
+        /// 查找插件 / Find plugin
+        /// </summary>
+        /// <param name="fileName">文件名 / File name</param>
+        /// <returns>插件ID，失败返回-1 / Plugin ID, returns -1 on failure</returns>
+        public static int FindPlugin(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+                return -1;
+
+            return ExtendedNativeMethods.FindPlugin(fileName);
+        }
+
+        /// <summary>
+        /// 检查插件是否有效 / Check if plugin is valid
+        /// </summary>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <returns>是否有效 / Whether valid</returns>
+        public static bool IsPluginValid(int pluginId)
+        {
+            return ExtendedNativeMethods.IsPluginValid(pluginId);
+        }
+
+        /// <summary>
+        /// 检查插件是否运行中 / Check if plugin is running
+        /// </summary>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <returns>是否运行中 / Whether running</returns>
+        public static bool IsPluginRunning(int pluginId)
+        {
+            return ExtendedNativeMethods.IsPluginRunning(pluginId);
+        }
+
+        /// <summary>
+        /// 暂停插件 / Pause plugin
+        /// </summary>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool PausePlugin(int pluginId)
+        {
+            return ExtendedNativeMethods.PausePlugin(pluginId);
+        }
+
+        /// <summary>
+        /// 恢复插件 / Unpause plugin
+        /// </summary>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool UnpausePlugin(int pluginId)
+        {
+            return ExtendedNativeMethods.UnpausePlugin(pluginId);
+        }
+
+        #endregion
+
+        #region Function Call System / 函数调用系统
+
+        /// <summary>
+        /// 开始函数调用 / Begin function call
+        /// </summary>
+        /// <param name="funcName">函数名 / Function name</param>
+        /// <param name="pluginName">插件名，为空则自动查找 / Plugin name, empty for auto-find</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool CallFuncBegin(string funcName, string pluginName = "")
+        {
+            if (string.IsNullOrEmpty(funcName))
+                return false;
+
+            return ExtendedNativeMethods.CallFuncBegin(funcName, pluginName ?? "");
+        }
+
+        /// <summary>
+        /// 通过ID开始函数调用 / Begin function call by ID
+        /// </summary>
+        /// <param name="funcId">函数ID / Function ID</param>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool CallFuncBeginById(int funcId, int pluginId)
+        {
+            return ExtendedNativeMethods.CallFuncBeginById(funcId, pluginId);
+        }
+
+        /// <summary>
+        /// 压入整数参数 / Push integer parameter
+        /// </summary>
+        /// <param name="value">整数值 / Integer value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool CallFuncPushInt(int value)
+        {
+            return ExtendedNativeMethods.CallFuncPushInt(value);
+        }
+
+        /// <summary>
+        /// 压入浮点参数 / Push float parameter
+        /// </summary>
+        /// <param name="value">浮点值 / Float value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool CallFuncPushFloat(float value)
+        {
+            return ExtendedNativeMethods.CallFuncPushFloat(value);
+        }
+
+        /// <summary>
+        /// 压入字符串参数 / Push string parameter
+        /// </summary>
+        /// <param name="value">字符串值 / String value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool CallFuncPushString(string value)
+        {
+            return ExtendedNativeMethods.CallFuncPushString(value ?? "");
+        }
+
+        /// <summary>
+        /// 压入数组参数 / Push array parameter
+        /// </summary>
+        /// <param name="array">数组值 / Array value</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool CallFuncPushArray(int[] array)
+        {
+            if (array == null || array.Length == 0)
+                return false;
+
+            return ExtendedNativeMethods.CallFuncPushArray(array, array.Length);
+        }
+
+        /// <summary>
+        /// 结束函数调用 / End function call
+        /// </summary>
+        /// <returns>函数返回值 / Function return value</returns>
+        public static int CallFuncEnd()
+        {
+            return ExtendedNativeMethods.CallFuncEnd();
+        }
+
+        /// <summary>
+        /// 获取函数ID / Get function ID
+        /// </summary>
+        /// <param name="funcName">函数名 / Function name</param>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <returns>函数ID，失败返回-1 / Function ID, returns -1 on failure</returns>
+        public static int GetFuncId(string funcName, int pluginId)
+        {
+            if (string.IsNullOrEmpty(funcName))
+                return -1;
+
+            return ExtendedNativeMethods.GetFuncId(funcName, pluginId);
+        }
+
+        #endregion
+
+        #region Forward System / Forward系统
+
+        /// <summary>
+        /// Forward执行类型 / Forward execution type
+        /// </summary>
+        public enum ForwardExecType
+        {
+            /// <summary>忽略返回值 / Ignore return value</summary>
+            Ignore = 0,
+            /// <summary>停止执行 / Stop execution</summary>
+            Stop = 1,
+            /// <summary>停止执行2 / Stop execution 2</summary>
+            Stop2 = 2,
+            /// <summary>继续执行 / Continue execution</summary>
+            Continue = 3
+        }
+
+        /// <summary>
+        /// Forward参数类型 / Forward parameter type
+        /// </summary>
+        public enum ForwardParamType
+        {
+            /// <summary>整数 / Integer</summary>
+            Cell = 1,
+            /// <summary>浮点数 / Float</summary>
+            Float = 2,
+            /// <summary>字符串 / String</summary>
+            String = 3,
+            /// <summary>数组 / Array</summary>
+            Array = 4,
+            /// <summary>完成标记 / Done marker</summary>
+            Done = 5
+        }
+
+        /// <summary>
+        /// 创建Forward / Create forward
+        /// </summary>
+        /// <param name="funcName">函数名 / Function name</param>
+        /// <param name="execType">执行类型 / Execution type</param>
+        /// <param name="paramTypes">参数类型数组 / Parameter types array</param>
+        /// <returns>Forward ID，失败返回-1 / Forward ID, returns -1 on failure</returns>
+        public static int CreateForward(string funcName, ForwardExecType execType, params ForwardParamType[] paramTypes)
+        {
+            if (string.IsNullOrEmpty(funcName))
+                return -1;
+
+            int[] types = paramTypes?.Select(t => (int)t).ToArray() ?? new int[0];
+            return ExtendedNativeMethods.CreateForward(funcName, (int)execType, types, types.Length);
+        }
+
+        /// <summary>
+        /// 创建单插件Forward / Create single plugin forward
+        /// </summary>
+        /// <param name="funcName">函数名 / Function name</param>
+        /// <param name="pluginId">插件ID / Plugin ID</param>
+        /// <param name="paramTypes">参数类型数组 / Parameter types array</param>
+        /// <returns>Forward ID，失败返回-1 / Forward ID, returns -1 on failure</returns>
+        public static int CreateSPForward(string funcName, int pluginId, params ForwardParamType[] paramTypes)
+        {
+            if (string.IsNullOrEmpty(funcName))
+                return -1;
+
+            int[] types = paramTypes?.Select(t => (int)t).ToArray() ?? new int[0];
+            return ExtendedNativeMethods.CreateSPForward(funcName, pluginId, types, types.Length);
+        }
+
+        /// <summary>
+        /// 销毁Forward / Destroy forward
+        /// </summary>
+        /// <param name="forwardId">Forward ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool DestroyForward(int forwardId)
+        {
+            return ExtendedNativeMethods.DestroyForward(forwardId);
+        }
+
+        /// <summary>
+        /// 执行Forward / Execute forward
+        /// </summary>
+        /// <param name="forwardId">Forward ID</param>
+        /// <param name="parameters">参数数组 / Parameters array</param>
+        /// <returns>执行结果 / Execution result</returns>
+        public static int ExecuteForward(int forwardId, params int[] parameters)
+        {
+            int[] params = parameters ?? new int[0];
+            return ExtendedNativeMethods.ExecuteForward(forwardId, params, params.Length);
+        }
+
+        /// <summary>
+        /// 获取Forward信息 / Get forward information
+        /// </summary>
+        /// <param name="forwardId">Forward ID</param>
+        /// <returns>Forward信息，失败返回null / Forward info, returns null on failure</returns>
+        public static ForwardInfo? GetForwardInfo(int forwardId)
+        {
+            if (ExtendedNativeMethods.GetForwardInfo(forwardId, out ForwardInfo info))
+                return info;
+
+            return null;
+        }
+
+        #endregion
+
+        #region Server Management / 服务器管理
+
+        /// <summary>
+        /// 服务器打印消息 / Server print message
+        /// </summary>
+        /// <param name="message">消息内容 / Message content</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool ServerPrint(string message)
+        {
+            return ExtendedNativeMethods.ServerPrint(message ?? "");
+        }
+
+        /// <summary>
+        /// 执行服务器命令 / Execute server command
+        /// </summary>
+        /// <param name="command">命令内容 / Command content</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool ServerCmd(string command)
+        {
+            return ExtendedNativeMethods.ServerCmd(command ?? "");
+        }
+
+        /// <summary>
+        /// 执行服务器命令队列 / Execute server command queue
+        /// </summary>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool ServerExec()
+        {
+            return ExtendedNativeMethods.ServerExec();
+        }
+
+        /// <summary>
+        /// 检查是否为专用服务器 / Check if dedicated server
+        /// </summary>
+        /// <returns>是否为专用服务器 / Whether dedicated server</returns>
+        public static bool IsDedicatedServer()
+        {
+            return ExtendedNativeMethods.IsDedicatedServer();
+        }
+
+        /// <summary>
+        /// 检查是否为Linux服务器 / Check if Linux server
+        /// </summary>
+        /// <returns>是否为Linux服务器 / Whether Linux server</returns>
+        public static bool IsLinuxServer()
+        {
+            return ExtendedNativeMethods.IsLinuxServer();
+        }
+
+        /// <summary>
+        /// 检查地图是否有效 / Check if map is valid
+        /// </summary>
+        /// <param name="mapName">地图名称 / Map name</param>
+        /// <returns>是否有效 / Whether valid</returns>
+        public static bool IsMapValid(string mapName)
+        {
+            if (string.IsNullOrEmpty(mapName))
+                return false;
+
+            return ExtendedNativeMethods.IsMapValid(mapName);
+        }
+
+        #endregion
+
+        #region Client Management / 客户端管理
+
+        /// <summary>
+        /// 获取玩家数量 / Get players number
+        /// </summary>
+        /// <param name="includeConnecting">是否包含连接中的玩家 / Whether to include connecting players</param>
+        /// <returns>玩家数量 / Number of players</returns>
+        public static int GetPlayersNum(bool includeConnecting = false)
+        {
+            return ExtendedNativeMethods.GetPlayersNum(includeConnecting);
+        }
+
+        /// <summary>
+        /// 检查用户是否为机器人 / Check if user is bot
+        /// </summary>
+        /// <param name="clientId">客户端ID / Client ID</param>
+        /// <returns>是否为机器人 / Whether is bot</returns>
+        public static bool IsUserBot(int clientId)
+        {
+            return ExtendedNativeMethods.IsUserBot(clientId);
+        }
+
+        /// <summary>
+        /// 检查用户是否已连接 / Check if user is connected
+        /// </summary>
+        /// <param name="clientId">客户端ID / Client ID</param>
+        /// <returns>是否已连接 / Whether connected</returns>
+        public static bool IsUserConnected(int clientId)
+        {
+            return ExtendedNativeMethods.IsUserConnected(clientId);
+        }
+
+        /// <summary>
+        /// 检查用户是否存活 / Check if user is alive
+        /// </summary>
+        /// <param name="clientId">客户端ID / Client ID</param>
+        /// <returns>是否存活 / Whether alive</returns>
+        public static bool IsUserAlive(int clientId)
+        {
+            return ExtendedNativeMethods.IsUserAlive(clientId);
+        }
+
+        /// <summary>
+        /// 获取用户时间 / Get user time
+        /// </summary>
+        /// <param name="clientId">客户端ID / Client ID</param>
+        /// <param name="playtime">是否获取游戏时间 / Whether to get playtime</param>
+        /// <returns>时间（秒） / Time in seconds</returns>
+        public static int GetUserTime(int clientId, bool playtime = false)
+        {
+            return ExtendedNativeMethods.GetUserTime(clientId, playtime);
+        }
+
+        /// <summary>
+        /// 向客户端发送命令 / Send command to client
+        /// </summary>
+        /// <param name="clientId">客户端ID / Client ID</param>
+        /// <param name="command">命令内容 / Command content</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool ClientCmd(int clientId, string command)
+        {
+            return ExtendedNativeMethods.ClientCmd(clientId, command ?? "");
+        }
+
+        /// <summary>
+        /// 向客户端发送虚假命令 / Send fake command to client
+        /// </summary>
+        /// <param name="clientId">客户端ID / Client ID</param>
+        /// <param name="command">命令内容 / Command content</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool FakeClientCmd(int clientId, string command)
+        {
+            return ExtendedNativeMethods.FakeClientCmd(clientId, command ?? "");
+        }
+
+        #endregion
+
+        #region Admin Management / 管理员管理
+
+        /// <summary>
+        /// 管理员属性类型 / Admin property type
+        /// </summary>
+        public enum AdminProperty
+        {
+            /// <summary>认证数据 / Auth data</summary>
+            Auth = 0,
+            /// <summary>密码 / Password</summary>
+            Password = 1,
+            /// <summary>访问权限 / Access flags</summary>
+            Access = 2,
+            /// <summary>管理员标志 / Admin flags</summary>
+            Flags = 3
+        }
+
+        /// <summary>
+        /// 添加管理员 / Add admin
+        /// </summary>
+        /// <param name="authData">认证数据（SteamID、IP或名称） / Auth data (SteamID, IP or name)</param>
+        /// <param name="password">密码 / Password</param>
+        /// <param name="access">访问权限 / Access flags</param>
+        /// <param name="flags">管理员标志 / Admin flags</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool AdminsPush(string authData, string password, int access, int flags)
+        {
+            if (string.IsNullOrEmpty(authData))
+                return false;
+
+            return ExtendedNativeMethods.AdminsPush(authData, password ?? "", access, flags);
+        }
+
+        /// <summary>
+        /// 清空管理员列表 / Clear admins list
+        /// </summary>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool AdminsFlush()
+        {
+            return ExtendedNativeMethods.AdminsFlush();
+        }
+
+        /// <summary>
+        /// 获取管理员数量 / Get admins number
+        /// </summary>
+        /// <returns>管理员数量 / Number of admins</returns>
+        public static int AdminsNum()
+        {
+            return ExtendedNativeMethods.AdminsNum();
+        }
+
+        /// <summary>
+        /// 查找管理员信息 / Lookup admin information
+        /// </summary>
+        /// <param name="index">索引 / Index</param>
+        /// <param name="property">属性类型 / Property type</param>
+        /// <returns>属性值，失败返回null / Property value, returns null on failure</returns>
+        public static object AdminsLookup(int index, AdminProperty property)
+        {
+            var buffer = new StringBuilder(256);
+            int outValue;
+
+            if (ExtendedNativeMethods.AdminsLookup(index, (int)property, buffer, buffer.Capacity, out outValue))
+            {
+                switch (property)
+                {
+                    case AdminProperty.Auth:
+                    case AdminProperty.Password:
+                        return buffer.ToString();
+                    case AdminProperty.Access:
+                    case AdminProperty.Flags:
+                        return outValue;
+                }
+            }
+
+            return null;
+        }
+
+        #endregion
+
+        #region Logging Management / 日志管理
+
+        /// <summary>
+        /// 日志级别 / Log level
+        /// </summary>
+        public enum LogLevel
+        {
+            /// <summary>调试 / Debug</summary>
+            Debug = 0,
+            /// <summary>信息 / Info</summary>
+            Info = 1,
+            /// <summary>警告 / Warning</summary>
+            Warning = 2,
+            /// <summary>错误 / Error</summary>
+            Error = 3,
+            /// <summary>致命错误 / Fatal</summary>
+            Fatal = 4
+        }
+
+        /// <summary>
+        /// 记录到文件 / Log to file
+        /// </summary>
+        /// <param name="fileName">文件名 / File name</param>
+        /// <param name="message">消息内容 / Message content</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool LogToFile(string fileName, string message)
+        {
+            if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(message))
+                return false;
+
+            return ExtendedNativeMethods.LogToFile(fileName, message);
+        }
+
+        /// <summary>
+        /// AMX日志 / AMX log
+        /// </summary>
+        /// <param name="message">消息内容 / Message content</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool LogAmx(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return false;
+
+            return ExtendedNativeMethods.LogAmx(message);
+        }
+
+        /// <summary>
+        /// 记录错误 / Log error
+        /// </summary>
+        /// <param name="errorCode">错误代码 / Error code</param>
+        /// <param name="message">错误消息 / Error message</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool LogError(int errorCode, string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return false;
+
+            return ExtendedNativeMethods.LogError(errorCode, message);
+        }
+
+        /// <summary>
+        /// 注册日志回调 / Register log callback
+        /// </summary>
+        /// <param name="callback">回调函数 / Callback function</param>
+        /// <returns>回调ID，失败返回-1 / Callback ID, returns -1 on failure</returns>
+        public static int RegisterLogCallback(Action<LogLevel, string> callback)
+        {
+            if (callback == null)
+                return -1;
+
+            var nativeCallback = new LogCallback((level, message) => callback((LogLevel)level, message));
+            int callbackId = ExtendedNativeMethods.RegisterLogCallback(nativeCallback);
+
+            if (callbackId >= 0)
+            {
+                _logCallbacks[callbackId] = nativeCallback;
+            }
+
+            return callbackId;
+        }
+
+        /// <summary>
+        /// 取消注册日志回调 / Unregister log callback
+        /// </summary>
+        /// <param name="callbackId">回调ID / Callback ID</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool UnregisterLogCallback(int callbackId)
+        {
+            if (_logCallbacks.ContainsKey(callbackId))
+            {
+                _logCallbacks.Remove(callbackId);
+            }
+
+            return ExtendedNativeMethods.UnregisterLogCallback(callbackId);
+        }
+
+        #endregion
+
+        #region Library Management / 库管理
+
+        /// <summary>
+        /// 注册库 / Register library
+        /// </summary>
+        /// <param name="libraryName">库名称 / Library name</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool RegisterLibrary(string libraryName)
+        {
+            if (string.IsNullOrEmpty(libraryName))
+                return false;
+
+            return ExtendedNativeMethods.RegisterLibrary(libraryName);
+        }
+
+        /// <summary>
+        /// 检查库是否存在 / Check if library exists
+        /// </summary>
+        /// <param name="libraryName">库名称 / Library name</param>
+        /// <returns>是否存在 / Whether exists</returns>
+        public static bool LibraryExists(string libraryName)
+        {
+            if (string.IsNullOrEmpty(libraryName))
+                return false;
+
+            return ExtendedNativeMethods.LibraryExists(libraryName);
+        }
+
+        #endregion
+
+        #region Utility Functions / 工具函数
+
+        /// <summary>
+        /// 中止执行 / Abort execution
+        /// </summary>
+        /// <param name="errorCode">错误代码 / Error code</param>
+        /// <param name="message">错误消息 / Error message</param>
+        /// <returns>是否成功 / Whether successful</returns>
+        public static bool AbortExecution(int errorCode, string message = "")
+        {
+            return ExtendedNativeMethods.AbortExecution(errorCode, message ?? "");
+        }
+
+        /// <summary>
+        /// 获取堆空间 / Get heap space
+        /// </summary>
+        /// <returns>堆空间大小 / Heap space size</returns>
+        public static int GetHeapSpace()
+        {
+            return ExtendedNativeMethods.GetHeapSpace();
+        }
+
+        /// <summary>
+        /// 获取参数数量 / Get number of arguments
+        /// </summary>
+        /// <returns>参数数量 / Number of arguments</returns>
+        public static int GetNumArgs()
+        {
+            return ExtendedNativeMethods.GetNumArgs();
+        }
+
+        /// <summary>
+        /// 交换字符串中的字符 / Swap characters in string
+        /// </summary>
+        /// <param name="text">文本 / Text</param>
+        /// <param name="char1">字符1 / Character 1</param>
+        /// <param name="char2">字符2 / Character 2</param>
+        /// <returns>交换后的字符串 / String after swapping</returns>
+        public static string SwapChars(string text, char char1, char char2)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            var buffer = new StringBuilder(text);
+            ExtendedNativeMethods.SwapChars(buffer, char1, char2);
+            return buffer.ToString();
+        }
+
+        /// <summary>
+        /// 生成随机整数 / Generate random integer
+        /// </summary>
+        /// <param name="max">最大值（不包含） / Maximum value (exclusive)</param>
+        /// <returns>随机整数 / Random integer</returns>
+        public static int RandomInt(int max)
+        {
+            return ExtendedNativeMethods.RandomInt(max);
+        }
+
+        /// <summary>
+        /// 获取两个整数的最小值 / Get minimum of two integers
+        /// </summary>
+        /// <param name="a">整数A / Integer A</param>
+        /// <param name="b">整数B / Integer B</param>
+        /// <returns>最小值 / Minimum value</returns>
+        public static int MinInt(int a, int b)
+        {
+            return ExtendedNativeMethods.MinInt(a, b);
+        }
+
+        /// <summary>
+        /// 获取两个整数的最大值 / Get maximum of two integers
+        /// </summary>
+        /// <param name="a">整数A / Integer A</param>
+        /// <param name="b">整数B / Integer B</param>
+        /// <returns>最大值 / Maximum value</returns>
+        public static int MaxInt(int a, int b)
+        {
+            return ExtendedNativeMethods.MaxInt(a, b);
+        }
+
+        /// <summary>
+        /// 限制整数在指定范围内 / Clamp integer within specified range
+        /// </summary>
+        /// <param name="value">值 / Value</param>
+        /// <param name="min">最小值 / Minimum value</param>
+        /// <param name="max">最大值 / Maximum value</param>
+        /// <returns>限制后的值 / Clamped value</returns>
+        public static int ClampInt(int value, int min, int max)
+        {
+            return ExtendedNativeMethods.ClampInt(value, min, max);
+        }
+
+        #endregion
+    }
 }

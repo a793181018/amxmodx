@@ -12,6 +12,7 @@ AMX Mod X Extended C# API is an extension to AMX Mod X that provides a complete 
 - **Native管理** / Native Management - 自定义Native函数注册
 - **消息系统** / Message System - 游戏消息发送和接收
 - **数据包** / DataPack - 序列化数据存储
+- **核心AMX功能** / Core AMX Features - 插件管理、函数调用、Forward系统等
 
 ## 特性 / Features
 
@@ -180,6 +181,194 @@ DataPackManager.ResetPack(packId);
 int intValue = DataPackManager.ReadPackCell(packId);
 float floatValue = DataPackManager.ReadPackFloat(packId);
 string stringValue = DataPackManager.ReadPackString(packId);
+```
+
+## 🎯 核心AMX功能 / Core AMX Features
+
+### 插件管理 / Plugin Management
+
+```csharp
+// 获取插件数量
+int pluginCount = CoreAmxManager.GetPluginsNum();
+
+// 获取插件信息
+var pluginInfo = CoreAmxManager.GetPluginInfo(0);
+if (pluginInfo.HasValue)
+{
+    Console.WriteLine($"插件名称: {pluginInfo.Value.Name}");
+    Console.WriteLine($"版本: {pluginInfo.Value.Version}");
+    Console.WriteLine($"作者: {pluginInfo.Value.Author}");
+}
+
+// 查找插件
+int pluginId = CoreAmxManager.FindPlugin("admin.amxx");
+
+// 插件状态控制
+bool isValid = CoreAmxManager.IsPluginValid(pluginId);
+bool isRunning = CoreAmxManager.IsPluginRunning(pluginId);
+CoreAmxManager.PausePlugin(pluginId);
+CoreAmxManager.UnpausePlugin(pluginId);
+```
+
+### 函数调用系统 / Function Call System
+
+```csharp
+// 调用插件函数
+if (CoreAmxManager.CallFuncBegin("my_function", "plugin.amxx"))
+{
+    CoreAmxManager.CallFuncPushInt(123);
+    CoreAmxManager.CallFuncPushFloat(45.67f);
+    CoreAmxManager.CallFuncPushString("Hello");
+    CoreAmxManager.CallFuncPushArray(new int[] { 1, 2, 3 });
+
+    int result = CoreAmxManager.CallFuncEnd();
+    Console.WriteLine($"函数返回值: {result}");
+}
+
+// 通过ID调用函数
+int funcId = CoreAmxManager.GetFuncId("function_name", pluginId);
+if (CoreAmxManager.CallFuncBeginById(funcId, pluginId))
+{
+    CoreAmxManager.CallFuncPushString("参数");
+    int result = CoreAmxManager.CallFuncEnd();
+}
+```
+
+### Forward系统 / Forward System
+
+```csharp
+// 创建全局Forward
+int forwardId = CoreAmxManager.CreateForward(
+    "player_connect",
+    CoreAmxManager.ForwardExecType.Ignore,
+    CoreAmxManager.ForwardParamType.Cell,    // 玩家ID
+    CoreAmxManager.ForwardParamType.String,  // 玩家名称
+    CoreAmxManager.ForwardParamType.String   // IP地址
+);
+
+// 创建单插件Forward
+int spForwardId = CoreAmxManager.CreateSPForward(
+    "my_callback",
+    pluginId,
+    CoreAmxManager.ForwardParamType.Cell,
+    CoreAmxManager.ForwardParamType.Float
+);
+
+// 执行Forward
+int result = CoreAmxManager.ExecuteForward(forwardId, 1, 0, 0);
+
+// 获取Forward信息
+var forwardInfo = CoreAmxManager.GetForwardInfo(forwardId);
+if (forwardInfo.HasValue)
+{
+    Console.WriteLine($"Forward名称: {forwardInfo.Value.Name}");
+    Console.WriteLine($"参数数量: {forwardInfo.Value.ParamCount}");
+}
+
+// 销毁Forward
+CoreAmxManager.DestroyForward(forwardId);
+```
+
+### 服务器管理 / Server Management
+
+```csharp
+// 服务器信息
+bool isDedicated = CoreAmxManager.IsDedicatedServer();
+bool isLinux = CoreAmxManager.IsLinuxServer();
+
+// 服务器输出和命令
+CoreAmxManager.ServerPrint("服务器消息");
+CoreAmxManager.ServerCmd("echo \"Hello World\"");
+CoreAmxManager.ServerExec(); // 立即执行命令队列
+
+// 地图验证
+bool isMapValid = CoreAmxManager.IsMapValid("de_dust2");
+```
+
+### 客户端管理 / Client Management
+
+```csharp
+// 玩家信息
+int playerCount = CoreAmxManager.GetPlayersNum();
+int connectingCount = CoreAmxManager.GetPlayersNum(true);
+
+// 玩家状态检查
+bool isBot = CoreAmxManager.IsUserBot(clientId);
+bool isConnected = CoreAmxManager.IsUserConnected(clientId);
+bool isAlive = CoreAmxManager.IsUserAlive(clientId);
+int playTime = CoreAmxManager.GetUserTime(clientId, true);
+
+// 客户端命令
+CoreAmxManager.ClientCmd(clientId, "say \"Hello\"");
+CoreAmxManager.FakeClientCmd(clientId, "kill");
+```
+
+### 管理员管理 / Admin Management
+
+```csharp
+// 清空管理员列表
+CoreAmxManager.AdminsFlush();
+
+// 添加管理员
+CoreAmxManager.AdminsPush("STEAM_0:1:12345", "password", 1023, 0);
+CoreAmxManager.AdminsPush("192.168.1.100", "", 511, 1);
+
+// 获取管理员信息
+int adminCount = CoreAmxManager.AdminsNum();
+for (int i = 0; i < adminCount; i++)
+{
+    var auth = CoreAmxManager.AdminsLookup(i, CoreAmxManager.AdminProperty.Auth) as string;
+    var access = CoreAmxManager.AdminsLookup(i, CoreAmxManager.AdminProperty.Access);
+    Console.WriteLine($"管理员: {auth}, 权限: {access}");
+}
+```
+
+### 日志管理 / Logging Management
+
+```csharp
+// 基本日志记录
+CoreAmxManager.LogAmx("AMX日志消息");
+CoreAmxManager.LogToFile("custom.log", "自定义日志");
+CoreAmxManager.LogError(404, "错误消息");
+
+// 注册日志回调
+int callbackId = CoreAmxManager.RegisterLogCallback((level, message) =>
+{
+    Console.WriteLine($"[{level}] {message}");
+});
+
+// 取消注册回调
+CoreAmxManager.UnregisterLogCallback(callbackId);
+```
+
+### 库管理 / Library Management
+
+```csharp
+// 注册库
+CoreAmxManager.RegisterLibrary("my_library");
+
+// 检查库是否存在
+bool exists = CoreAmxManager.LibraryExists("my_library");
+```
+
+### 工具函数 / Utility Functions
+
+```csharp
+// 数学函数
+int min = CoreAmxManager.MinInt(10, 20);
+int max = CoreAmxManager.MaxInt(10, 20);
+int clamped = CoreAmxManager.ClampInt(25, 10, 20);
+int random = CoreAmxManager.RandomInt(100);
+
+// 字符串工具
+string swapped = CoreAmxManager.SwapChars("Hello", 'l', 'L');
+
+// 系统信息
+int heapSpace = CoreAmxManager.GetHeapSpace();
+int numArgs = CoreAmxManager.GetNumArgs();
+
+// 执行控制
+CoreAmxManager.AbortExecution(500, "严重错误");
 ```
 
 ## 编译和安装 / Build and Installation

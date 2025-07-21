@@ -303,6 +303,105 @@ CSHARP_EXPORT bool CSHARP_CALL SetPackPosition(int packId, int position);
 CSHARP_EXPORT bool CSHARP_CALL IsPackEnded(int packId);
 CSHARP_EXPORT bool CSHARP_CALL DestroyDataPack(int packId);
 
+// Core AMX functions
+typedef void (CSHARP_CALL *CSharpLogCallback)(int logLevel, const char* message);
+typedef int (CSHARP_CALL *CSharpCallFuncCallback)(int pluginId, int funcId, int paramCount);
+
+struct CSharpPluginInfo
+{
+    char fileName[256];
+    char name[128];
+    char version[32];
+    char author[128];
+    char status[32];
+    char url[256];
+    char description[512];
+    int pluginId;
+    int statusCode;
+    bool isValid;
+    bool isRunning;
+    bool isPaused;
+};
+
+struct CSharpForwardInfo
+{
+    char name[128];
+    int forwardId;
+    int paramCount;
+    int execType;
+    bool isValid;
+};
+
+// Plugin management functions
+CSHARP_EXPORT int CSHARP_CALL GetPluginsNum();
+CSHARP_EXPORT bool CSHARP_CALL GetPluginInfo(int pluginId, CSharpPluginInfo* outInfo);
+CSHARP_EXPORT int CSHARP_CALL FindPlugin(const char* fileName);
+CSHARP_EXPORT bool CSHARP_CALL IsPluginValid(int pluginId);
+CSHARP_EXPORT bool CSHARP_CALL IsPluginRunning(int pluginId);
+CSHARP_EXPORT bool CSHARP_CALL PausePlugin(int pluginId);
+CSHARP_EXPORT bool CSHARP_CALL UnpausePlugin(int pluginId);
+
+// Function call system
+CSHARP_EXPORT bool CSHARP_CALL CallFuncBegin(const char* funcName, const char* pluginName);
+CSHARP_EXPORT bool CSHARP_CALL CallFuncBeginById(int funcId, int pluginId);
+CSHARP_EXPORT bool CSHARP_CALL CallFuncPushInt(int value);
+CSHARP_EXPORT bool CSHARP_CALL CallFuncPushFloat(float value);
+CSHARP_EXPORT bool CSHARP_CALL CallFuncPushString(const char* value);
+CSHARP_EXPORT bool CSHARP_CALL CallFuncPushArray(const int* array, int size);
+CSHARP_EXPORT int CSHARP_CALL CallFuncEnd();
+CSHARP_EXPORT int CSHARP_CALL GetFuncId(const char* funcName, int pluginId);
+
+// Forward system
+CSHARP_EXPORT int CSHARP_CALL CreateForward(const char* funcName, int execType, int paramTypes[], int paramCount);
+CSHARP_EXPORT int CSHARP_CALL CreateSPForward(const char* funcName, int pluginId, int paramTypes[], int paramCount);
+CSHARP_EXPORT bool CSHARP_CALL DestroyForward(int forwardId);
+CSHARP_EXPORT int CSHARP_CALL ExecuteForward(int forwardId, int params[], int paramCount);
+CSHARP_EXPORT bool CSHARP_CALL GetForwardInfo(int forwardId, CSharpForwardInfo* outInfo);
+
+// Server functions
+CSHARP_EXPORT bool CSHARP_CALL ServerPrint(const char* message);
+CSHARP_EXPORT bool CSHARP_CALL ServerCmd(const char* command);
+CSHARP_EXPORT bool CSHARP_CALL ServerExec();
+CSHARP_EXPORT bool CSHARP_CALL IsDedicatedServer();
+CSHARP_EXPORT bool CSHARP_CALL IsLinuxServer();
+CSHARP_EXPORT bool CSHARP_CALL IsMapValid(const char* mapName);
+
+// Client functions
+CSHARP_EXPORT int CSHARP_CALL GetPlayersNum(bool includeConnecting);
+CSHARP_EXPORT bool CSHARP_CALL IsUserBot(int clientId);
+CSHARP_EXPORT bool CSHARP_CALL IsUserConnected(int clientId);
+CSHARP_EXPORT bool CSHARP_CALL IsUserAlive(int clientId);
+CSHARP_EXPORT int CSHARP_CALL GetUserTime(int clientId, bool playtime);
+CSHARP_EXPORT bool CSHARP_CALL ClientCmd(int clientId, const char* command);
+CSHARP_EXPORT bool CSHARP_CALL FakeClientCmd(int clientId, const char* command);
+
+// Admin management functions
+CSHARP_EXPORT bool CSHARP_CALL AdminsPush(const char* authData, const char* password, int access, int flags);
+CSHARP_EXPORT bool CSHARP_CALL AdminsFlush();
+CSHARP_EXPORT int CSHARP_CALL AdminsNum();
+CSHARP_EXPORT bool CSHARP_CALL AdminsLookup(int index, int property, char* buffer, int bufferSize, int* outValue);
+
+// Logging functions
+CSHARP_EXPORT bool CSHARP_CALL LogToFile(const char* fileName, const char* message);
+CSHARP_EXPORT bool CSHARP_CALL LogAmx(const char* message);
+CSHARP_EXPORT bool CSHARP_CALL LogError(int errorCode, const char* message);
+CSHARP_EXPORT int CSHARP_CALL RegisterLogCallback(CSharpLogCallback callback);
+CSHARP_EXPORT bool CSHARP_CALL UnregisterLogCallback(int callbackId);
+
+// Library management functions
+CSHARP_EXPORT bool CSHARP_CALL RegisterLibrary(const char* libraryName);
+CSHARP_EXPORT bool CSHARP_CALL LibraryExists(const char* libraryName);
+
+// Utility functions
+CSHARP_EXPORT bool CSHARP_CALL AbortExecution(int errorCode, const char* message);
+CSHARP_EXPORT int CSHARP_CALL GetHeapSpace();
+CSHARP_EXPORT int CSHARP_CALL GetNumArgs();
+CSHARP_EXPORT bool CSHARP_CALL SwapChars(char* string, int char1, int char2);
+CSHARP_EXPORT int CSHARP_CALL RandomInt(int max);
+CSHARP_EXPORT int CSHARP_CALL MinInt(int a, int b);
+CSHARP_EXPORT int CSHARP_CALL MaxInt(int a, int b);
+CSHARP_EXPORT int CSHARP_CALL ClampInt(int value, int min, int max);
+
 // Event parameter reading functions
 CSHARP_EXPORT int CSHARP_CALL GetEventArgCount();
 CSHARP_EXPORT bool CSHARP_CALL GetEventArg(int index, CSharpEventParam* outParam);
@@ -568,6 +667,31 @@ namespace CSharpBridge
         CDataPack* pack;
     };
 
+    // Core AMX callback storage
+    struct LogCallbackInfo
+    {
+        int callbackId;
+        CSharpLogCallback callback;
+    };
+
+    struct CallFuncInfo
+    {
+        CPluginMngr::CPlugin* plugin;
+        int funcId;
+        int currentParam;
+        bool isActive;
+    };
+
+    struct ForwardCallbackInfo
+    {
+        int forwardId;
+        CSharpCallFuncCallback callback;
+        ke::AString name;
+        int execType;
+        int paramCount;
+        int paramTypes[16]; // Max 16 parameters
+    };
+
     // Bridge state management
     void Initialize();
     void Cleanup();
@@ -592,6 +716,9 @@ namespace CSharpBridge
     extern ke::Vector<GameConfigInfo*> g_gameConfigs;
     extern ke::Vector<NativeCallbackInfo*> g_nativeCallbacks;
     extern ke::Vector<DataPackInfo*> g_dataPacks;
+    extern ke::Vector<LogCallbackInfo*> g_logCallbacks;
+    extern ke::Vector<ForwardCallbackInfo*> g_forwardCallbacks;
+    extern CallFuncInfo g_callFuncInfo;
     extern int g_nextCommandId;
     extern int g_nextMenuId;
     extern int g_nextEventHandle;
@@ -601,6 +728,7 @@ namespace CSharpBridge
     extern int g_nextGameConfigId;
     extern int g_nextNativeId;
     extern int g_nextDataPackId;
+    extern int g_nextLogCallbackId;
     extern bool g_initialized;
 
     // Event system helpers
@@ -621,6 +749,14 @@ namespace CSharpBridge
     int HookCvarChangeInternal(const char* name, CSharpCvarCallback callback);
     int HookCvarChangeInternal(const char* name, CSharpCvarChangeCallback callback);
     void HandleCvarCallback(const char* cvarName, const char* oldValue, const char* newValue);
+
+    // Core AMX system helpers
+    int RegisterLogCallbackInternal(CSharpLogCallback callback);
+    void HandleLogCallback(int logLevel, const char* message);
+    bool InitializeCallFunc();
+    void CleanupCallFunc();
+    CPluginMngr::CPlugin* FindPluginByName(const char* pluginName);
+    CPluginMngr::CPlugin* FindPluginById(int pluginId);
 }
 
 #endif // CSHARP_BRIDGE_H

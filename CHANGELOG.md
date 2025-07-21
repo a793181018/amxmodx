@@ -10,6 +10,112 @@ This document records all notable changes to AMX Mod X Extended C# API.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2024-01-21
+
+### 新增 / Added
+
+#### 🎯 核心AMX功能系统 / Core AMX Features System
+
+**插件管理系统** / Plugin Management System
+- ✅ `CoreAmxManager.GetPluginsNum()` - 获取插件数量 / Get plugins number
+- ✅ `CoreAmxManager.GetPluginInfo()` - 获取插件详细信息 / Get plugin information
+- ✅ `CoreAmxManager.FindPlugin()` - 查找插件 / Find plugin
+- ✅ `CoreAmxManager.IsPluginValid()` - 检查插件是否有效 / Check if plugin is valid
+- ✅ `CoreAmxManager.IsPluginRunning()` - 检查插件是否运行 / Check if plugin is running
+- ✅ `CoreAmxManager.PausePlugin()` - 暂停插件 / Pause plugin
+- ✅ `CoreAmxManager.UnpausePlugin()` - 恢复插件 / Unpause plugin
+
+**函数调用系统** / Function Call System
+- ✅ `CoreAmxManager.CallFuncBegin()` - 开始函数调用 / Begin function call
+- ✅ `CoreAmxManager.CallFuncBeginById()` - 通过ID开始函数调用 / Begin function call by ID
+- ✅ `CoreAmxManager.CallFuncPushInt()` - 压入整数参数 / Push integer parameter
+- ✅ `CoreAmxManager.CallFuncPushFloat()` - 压入浮点参数 / Push float parameter
+- ✅ `CoreAmxManager.CallFuncPushString()` - 压入字符串参数 / Push string parameter
+- ✅ `CoreAmxManager.CallFuncPushArray()` - 压入数组参数 / Push array parameter
+- ✅ `CoreAmxManager.CallFuncEnd()` - 结束函数调用 / End function call
+- ✅ `CoreAmxManager.GetFuncId()` - 获取函数ID / Get function ID
+
+**Forward系统** / Forward System
+- ✅ `CoreAmxManager.CreateForward()` - 创建全局Forward / Create global forward
+- ✅ `CoreAmxManager.CreateSPForward()` - 创建单插件Forward / Create single plugin forward
+- ✅ `CoreAmxManager.ExecuteForward()` - 执行Forward / Execute forward
+- ✅ `CoreAmxManager.GetForwardInfo()` - 获取Forward信息 / Get forward information
+- ✅ `CoreAmxManager.DestroyForward()` - 销毁Forward / Destroy forward
+
+**服务器管理** / Server Management
+- ✅ `CoreAmxManager.ServerPrint()` - 服务器打印 / Server print
+- ✅ `CoreAmxManager.ServerCmd()` - 服务器命令 / Server command
+- ✅ `CoreAmxManager.ServerExec()` - 执行服务器命令 / Execute server command
+- ✅ `CoreAmxManager.IsDedicatedServer()` - 检查是否专用服务器 / Check if dedicated server
+- ✅ `CoreAmxManager.IsLinuxServer()` - 检查是否Linux服务器 / Check if Linux server
+- ✅ `CoreAmxManager.IsMapValid()` - 检查地图有效性 / Check map validity
+
+**客户端管理** / Client Management
+- ✅ `CoreAmxManager.GetPlayersNum()` - 获取玩家数量 / Get players number
+- ✅ `CoreAmxManager.IsUserBot()` - 检查是否机器人 / Check if user is bot
+- ✅ `CoreAmxManager.IsUserConnected()` - 检查用户连接状态 / Check if user is connected
+- ✅ `CoreAmxManager.IsUserAlive()` - 检查用户存活状态 / Check if user is alive
+- ✅ `CoreAmxManager.GetUserTime()` - 获取用户时间 / Get user time
+- ✅ `CoreAmxManager.ClientCmd()` - 客户端命令 / Client command
+- ✅ `CoreAmxManager.FakeClientCmd()` - 虚假客户端命令 / Fake client command
+
+**管理员管理** / Admin Management
+- ✅ `CoreAmxManager.AdminsPush()` - 添加管理员 / Add admin
+- ✅ `CoreAmxManager.AdminsFlush()` - 清空管理员列表 / Flush admins list
+- ✅ `CoreAmxManager.AdminsNum()` - 获取管理员数量 / Get admins number
+- ✅ `CoreAmxManager.AdminsLookup()` - 查找管理员信息 / Lookup admin information
+
+**日志管理** / Logging Management
+- ✅ `CoreAmxManager.LogAmx()` - AMX日志 / AMX log
+- ✅ `CoreAmxManager.LogToFile()` - 记录到文件 / Log to file
+- ✅ `CoreAmxManager.LogError()` - 记录错误 / Log error
+- ✅ `CoreAmxManager.RegisterLogCallback()` - 注册日志回调 / Register log callback
+- ✅ `CoreAmxManager.UnregisterLogCallback()` - 取消日志回调 / Unregister log callback
+
+**库管理** / Library Management
+- ✅ `CoreAmxManager.RegisterLibrary()` - 注册库 / Register library
+- ✅ `CoreAmxManager.LibraryExists()` - 检查库存在 / Check if library exists
+
+**工具函数** / Utility Functions
+- ✅ `CoreAmxManager.MinInt()` / `MaxInt()` / `ClampInt()` - 数学函数 / Math functions
+- ✅ `CoreAmxManager.RandomInt()` - 随机整数 / Random integer
+- ✅ `CoreAmxManager.SwapChars()` - 字符交换 / Swap characters
+- ✅ `CoreAmxManager.GetHeapSpace()` - 获取堆空间 / Get heap space
+- ✅ `CoreAmxManager.GetNumArgs()` - 获取参数数量 / Get number of arguments
+- ✅ `CoreAmxManager.AbortExecution()` - 中止执行 / Abort execution
+
+### 改进 / Improved
+
+**C++桥接层扩展** / Extended C++ Bridge Layer
+- 新增70+个核心AMX功能接口 / Added 70+ core AMX functionality interfaces
+- 完善的错误处理和参数验证 / Comprehensive error handling and parameter validation
+- 跨平台兼容性支持 / Cross-platform compatibility support
+- 线程安全的回调处理 / Thread-safe callback handling
+
+**C#管理类扩展** / Extended C# Manager Classes
+- 新增 `CoreAmxManager` 静态类 / Added CoreAmxManager static class
+- 完整的XML文档注释（中英文）/ Complete XML documentation (Chinese/English)
+- 类型安全的枚举定义 / Type-safe enum definitions
+- 改进的异常处理 / Improved exception handling
+
+**示例和文档** / Examples and Documentation
+- 扩展的使用示例和演示代码 / Extended usage examples and demo code
+- 更新的README文档 / Updated README documentation
+- 完整的API参考 / Complete API reference
+- 新增核心AMX功能演示 / Added core AMX features demonstration
+
+### 技术细节 / Technical Details
+
+**新增结构体** / New Structures
+- `PluginInfo` - 插件信息结构 / Plugin information structure
+- `ForwardInfo` - Forward信息结构 / Forward information structure
+- `LogCallback` / `CallFuncCallback` - 回调委托 / Callback delegates
+
+**内部优化** / Internal Optimizations
+- 改进的内存管理 / Improved memory management
+- 优化的字符串处理 / Optimized string handling
+- 增强的错误报告 / Enhanced error reporting
+
 ## [1.0.0] - 2024-01-20
 
 ### 新增 / Added
