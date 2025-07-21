@@ -4990,6 +4990,805 @@ CSHARP_EXPORT bool CSHARP_CALL IsLinuxServer()
     if (!CSharpBridge::g_initialized)
         return false;
 
+// ========== Engine Module C# Bridge Implementation ==========
+
+// Include engine module headers
+#include "modules/engine/engine.h"
+
+// Helper function to convert CSharpVector3 to Vector
+Vector CSharpVectorToVector(const CSharpVector3* vec)
+{
+    return Vector(vec->x, vec->y, vec->z);
+}
+
+// Helper function to convert Vector to CSharpVector3
+void VectorToCSharpVector(const Vector& vec, CSharpVector3* outVec)
+{
+    outVec->x = vec.x;
+    outVec->y = vec.y;
+    outVec->z = vec.z;
+}
+
+// ========== Entity Lifecycle Management Implementation ==========
+
+CSHARP_EXPORT int CSHARP_CALL CreateEntity(const char* className)
+{
+    if (!CSharpBridge::g_initialized || !className)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        // Create named entity using engine function
+        int iszClass = ALLOC_STRING(className);
+        edict_t* pEnt = CREATE_NAMED_ENTITY(iszClass);
+
+        if (FNullEnt(pEnt))
+            return 0;
+
+        return ENTINDEX(pEnt);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL RemoveEntity(int entityId)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        REMOVE_ENTITY(pEnt);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetEntityCount()
+{
+    if (!CSharpBridge::g_initialized)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        int count = 0;
+        for (int i = 1; i <= gpGlobals->maxEntities; i++)
+        {
+            edict_t* pEnt = INDEXENT(i);
+            if (!FNullEnt(pEnt) && !pEnt->free)
+                count++;
+        }
+        return count;
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL IsValidEntity(int entityId)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        return !FNullEnt(pEnt) && !pEnt->free;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+// ========== Entity Property Read/Write Implementation ==========
+
+CSHARP_EXPORT float CSHARP_CALL GetEntityFloat(int entityId, int property)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0)
+        return 0.0f;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return 0.0f;
+
+        // Call the engine module's entity_get_float function
+        cell params[3];
+        params[0] = 2 * sizeof(cell);
+        params[1] = entityId;
+        params[2] = property;
+
+        // This would need to call the actual engine module function
+        // For now, we'll implement basic property access
+        switch (property)
+        {
+            case 0: return pEnt->v.health;           // EV_FL_health
+            case 1: return pEnt->v.max_health;       // EV_FL_max_health
+            case 2: return pEnt->v.speed;            // EV_FL_speed
+            case 3: return pEnt->v.gravity;          // EV_FL_gravity
+            case 4: return pEnt->v.takedamage;       // EV_FL_takedamage
+            case 5: return pEnt->v.dmg;              // EV_FL_dmg
+            default: return 0.0f;
+        }
+    }
+    catch (...)
+    {
+        return 0.0f;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityFloat(int entityId, int property, float value)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        switch (property)
+        {
+            case 0: pEnt->v.health = value; break;           // EV_FL_health
+            case 1: pEnt->v.max_health = value; break;       // EV_FL_max_health
+            case 2: pEnt->v.speed = value; break;            // EV_FL_speed
+            case 3: pEnt->v.gravity = value; break;          // EV_FL_gravity
+            case 4: pEnt->v.takedamage = value; break;       // EV_FL_takedamage
+            case 5: pEnt->v.dmg = value; break;              // EV_FL_dmg
+            default: return false;
+        }
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetEntityInt(int entityId, int property)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return 0;
+
+        switch (property)
+        {
+            case 0: return static_cast<int>(pEnt->v.movetype);     // EV_INT_movetype
+            case 1: return static_cast<int>(pEnt->v.solid);        // EV_INT_solid
+            case 2: return static_cast<int>(pEnt->v.skin);         // EV_INT_skin
+            case 3: return static_cast<int>(pEnt->v.body);         // EV_INT_body
+            case 4: return static_cast<int>(pEnt->v.effects);      // EV_INT_effects
+            case 5: return static_cast<int>(pEnt->v.sequence);     // EV_INT_sequence
+            case 6: return static_cast<int>(pEnt->v.modelindex);   // EV_INT_modelindex
+            case 7: return static_cast<int>(pEnt->v.waterlevel);   // EV_INT_waterlevel
+            case 8: return static_cast<int>(pEnt->v.watertype);    // EV_INT_watertype
+            case 9: return static_cast<int>(pEnt->v.spawnflags);   // EV_INT_spawnflags
+            case 10: return static_cast<int>(pEnt->v.flags);       // EV_INT_flags
+            case 11: return static_cast<int>(pEnt->v.team);        // EV_INT_team
+            case 12: return static_cast<int>(pEnt->v.weapons);     // EV_INT_weapons
+            case 13: return static_cast<int>(pEnt->v.rendermode);  // EV_INT_rendermode
+            case 14: return static_cast<int>(pEnt->v.renderfx);    // EV_INT_renderfx
+            case 15: return static_cast<int>(pEnt->v.button);      // EV_INT_button
+            case 16: return static_cast<int>(pEnt->v.impulse);     // EV_INT_impulse
+            case 17: return static_cast<int>(pEnt->v.deadflag);    // EV_INT_deadflag
+            default: return 0;
+        }
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityInt(int entityId, int property, int value)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        switch (property)
+        {
+            case 0: pEnt->v.movetype = value; break;     // EV_INT_movetype
+            case 1: pEnt->v.solid = value; break;        // EV_INT_solid
+            case 2: pEnt->v.skin = value; break;         // EV_INT_skin
+            case 3: pEnt->v.body = value; break;         // EV_INT_body
+            case 4: pEnt->v.effects = value; break;      // EV_INT_effects
+            case 5: pEnt->v.sequence = value; break;     // EV_INT_sequence
+            case 6: pEnt->v.modelindex = value; break;   // EV_INT_modelindex
+            case 7: pEnt->v.waterlevel = value; break;   // EV_INT_waterlevel
+            case 8: pEnt->v.watertype = value; break;    // EV_INT_watertype
+            case 9: pEnt->v.spawnflags = value; break;   // EV_INT_spawnflags
+            case 10: pEnt->v.flags = value; break;       // EV_INT_flags
+            case 11: pEnt->v.team = value; break;        // EV_INT_team
+            case 12: pEnt->v.weapons = value; break;     // EV_INT_weapons
+            case 13: pEnt->v.rendermode = value; break;  // EV_INT_rendermode
+            case 14: pEnt->v.renderfx = value; break;    // EV_INT_renderfx
+            case 15: pEnt->v.button = value; break;      // EV_INT_button
+            case 16: pEnt->v.impulse = value; break;     // EV_INT_impulse
+            case 17: pEnt->v.deadflag = value; break;    // EV_INT_deadflag
+            default: return false;
+        }
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL GetEntityVector(int entityId, int property, CSharpVector3* vector)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0 || !vector)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        Vector result;
+        switch (property)
+        {
+            case 0: result = pEnt->v.origin; break;        // EV_VEC_origin
+            case 1: result = pEnt->v.oldorigin; break;     // EV_VEC_oldorigin
+            case 2: result = pEnt->v.velocity; break;      // EV_VEC_velocity
+            case 3: result = pEnt->v.basevelocity; break;  // EV_VEC_basevelocity
+            case 4: result = pEnt->v.movedir; break;       // EV_VEC_movedir
+            case 5: result = pEnt->v.angles; break;        // EV_VEC_angles
+            case 6: result = pEnt->v.avelocity; break;     // EV_VEC_avelocity
+            case 7: result = pEnt->v.punchangle; break;    // EV_VEC_punchangle
+            case 8: result = pEnt->v.v_angle; break;       // EV_VEC_v_angle
+            case 9: result = pEnt->v.endpos; break;        // EV_VEC_endpos
+            case 10: result = pEnt->v.startpos; break;     // EV_VEC_startpos
+            case 11: result = pEnt->v.absmin; break;       // EV_VEC_absmin
+            case 12: result = pEnt->v.absmax; break;       // EV_VEC_absmax
+            case 13: result = pEnt->v.mins; break;         // EV_VEC_mins
+            case 14: result = pEnt->v.maxs; break;         // EV_VEC_maxs
+            case 15: result = pEnt->v.size; break;         // EV_VEC_size
+            case 16: result = pEnt->v.rendercolor; break;  // EV_VEC_rendercolor
+            case 17: result = pEnt->v.view_ofs; break;     // EV_VEC_view_ofs
+            default: return false;
+        }
+
+        VectorToCSharpVector(result, vector);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityVector(int entityId, int property, const CSharpVector3* vector)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0 || !vector)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        Vector value = CSharpVectorToVector(vector);
+        switch (property)
+        {
+            case 0: pEnt->v.origin = value; break;        // EV_VEC_origin
+            case 1: pEnt->v.oldorigin = value; break;     // EV_VEC_oldorigin
+            case 2: pEnt->v.velocity = value; break;      // EV_VEC_velocity
+            case 3: pEnt->v.basevelocity = value; break;  // EV_VEC_basevelocity
+            case 4: pEnt->v.movedir = value; break;       // EV_VEC_movedir
+            case 5: pEnt->v.angles = value; break;        // EV_VEC_angles
+            case 6: pEnt->v.avelocity = value; break;     // EV_VEC_avelocity
+            case 7: pEnt->v.punchangle = value; break;    // EV_VEC_punchangle
+            case 8: pEnt->v.v_angle = value; break;       // EV_VEC_v_angle
+            case 9: pEnt->v.endpos = value; break;        // EV_VEC_endpos
+            case 10: pEnt->v.startpos = value; break;     // EV_VEC_startpos
+            case 11: pEnt->v.absmin = value; break;       // EV_VEC_absmin
+            case 12: pEnt->v.absmax = value; break;       // EV_VEC_absmax
+            case 13: pEnt->v.mins = value; break;         // EV_VEC_mins
+            case 14: pEnt->v.maxs = value; break;         // EV_VEC_maxs
+            case 15: pEnt->v.size = value; break;         // EV_VEC_size
+            case 16: pEnt->v.rendercolor = value; break;  // EV_VEC_rendercolor
+            case 17: pEnt->v.view_ofs = value; break;     // EV_VEC_view_ofs
+            default: return false;
+        }
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetEntityString(int entityId, int property, char* buffer, int maxLength)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0 || !buffer || maxLength <= 0)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return 0;
+
+        const char* result = nullptr;
+        switch (property)
+        {
+            case 0: result = STRING(pEnt->v.classname); break;    // EV_SZ_classname
+            case 1: result = STRING(pEnt->v.globalname); break;   // EV_SZ_globalname
+            case 2: result = STRING(pEnt->v.model); break;        // EV_SZ_model
+            case 3: result = STRING(pEnt->v.target); break;       // EV_SZ_target
+            case 4: result = STRING(pEnt->v.targetname); break;   // EV_SZ_targetname
+            case 5: result = STRING(pEnt->v.netname); break;      // EV_SZ_netname
+            case 6: result = STRING(pEnt->v.message); break;      // EV_SZ_message
+            case 7: result = STRING(pEnt->v.noise); break;        // EV_SZ_noise
+            case 8: result = STRING(pEnt->v.noise1); break;       // EV_SZ_noise1
+            case 9: result = STRING(pEnt->v.noise2); break;       // EV_SZ_noise2
+            case 10: result = STRING(pEnt->v.noise3); break;      // EV_SZ_noise3
+            default: return 0;
+        }
+
+        if (result)
+        {
+            int len = strlen(result);
+            if (len >= maxLength)
+                len = maxLength - 1;
+            strncpy(buffer, result, len);
+            buffer[len] = '\0';
+            return len;
+        }
+        return 0;
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityString(int entityId, int property, const char* value)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0 || !value)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        int stringIndex = ALLOC_STRING(value);
+        switch (property)
+        {
+            case 0: pEnt->v.classname = stringIndex; break;    // EV_SZ_classname
+            case 1: pEnt->v.globalname = stringIndex; break;   // EV_SZ_globalname
+            case 2: pEnt->v.model = stringIndex; break;        // EV_SZ_model
+            case 3: pEnt->v.target = stringIndex; break;       // EV_SZ_target
+            case 4: pEnt->v.targetname = stringIndex; break;   // EV_SZ_targetname
+            case 5: pEnt->v.netname = stringIndex; break;      // EV_SZ_netname
+            case 6: pEnt->v.message = stringIndex; break;      // EV_SZ_message
+            case 7: pEnt->v.noise = stringIndex; break;        // EV_SZ_noise
+            case 8: pEnt->v.noise1 = stringIndex; break;       // EV_SZ_noise1
+            case 9: pEnt->v.noise2 = stringIndex; break;       // EV_SZ_noise2
+            case 10: pEnt->v.noise3 = stringIndex; break;      // EV_SZ_noise3
+            default: return false;
+        }
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL GetEntityEdict(int entityId, int property)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return 0;
+
+        edict_t* result = nullptr;
+        switch (property)
+        {
+            case 0: result = pEnt->v.chain; break;           // EV_ENT_chain
+            case 1: result = pEnt->v.dmg_inflictor; break;   // EV_ENT_dmg_inflictor
+            case 2: result = pEnt->v.enemy; break;           // EV_ENT_enemy
+            case 3: result = pEnt->v.aiment; break;          // EV_ENT_aiment
+            case 4: result = pEnt->v.owner; break;           // EV_ENT_owner
+            case 5: result = pEnt->v.groundentity; break;    // EV_ENT_groundentity
+            case 6: result = pEnt->v.pContainingEntity; break; // EV_ENT_pContainingEntity
+            default: return 0;
+        }
+
+        return result ? ENTINDEX(result) : 0;
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityEdict(int entityId, int property, int targetEntityId)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        edict_t* pTarget = (targetEntityId > 0) ? INDEXENT(targetEntityId) : nullptr;
+        if (targetEntityId > 0 && FNullEnt(pTarget))
+            return false;
+
+        switch (property)
+        {
+            case 0: pEnt->v.chain = pTarget; break;           // EV_ENT_chain
+            case 1: pEnt->v.dmg_inflictor = pTarget; break;   // EV_ENT_dmg_inflictor
+            case 2: pEnt->v.enemy = pTarget; break;           // EV_ENT_enemy
+            case 3: pEnt->v.aiment = pTarget; break;          // EV_ENT_aiment
+            case 4: pEnt->v.owner = pTarget; break;           // EV_ENT_owner
+            case 5: pEnt->v.groundentity = pTarget; break;    // EV_ENT_groundentity
+            case 6: pEnt->v.pContainingEntity = pTarget; break; // EV_ENT_pContainingEntity
+            default: return false;
+        }
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityOrigin(int entityId, const CSharpVector3* origin)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0 || !origin)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        Vector newOrigin = CSharpVectorToVector(origin);
+        SET_ORIGIN(pEnt, newOrigin);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntityModel(int entityId, const char* modelName)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0 || !modelName)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        SET_MODEL(pEnt, modelName);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+CSHARP_EXPORT bool CSHARP_CALL SetEntitySize(int entityId, const CSharpVector3* mins, const CSharpVector3* maxs)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0 || !mins || !maxs)
+        return false;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt = INDEXENT(entityId);
+        if (FNullEnt(pEnt))
+            return false;
+
+        Vector vMins = CSharpVectorToVector(mins);
+        Vector vMaxs = CSharpVectorToVector(maxs);
+        SET_SIZE(pEnt, vMins, vMaxs);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+// ========== Entity Search and Finding Implementation ==========
+
+CSHARP_EXPORT float CSHARP_CALL GetEntityRange(int entityId, int targetEntityId)
+{
+    if (!CSharpBridge::g_initialized || entityId <= 0 || targetEntityId <= 0)
+        return 0.0f;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pEnt1 = INDEXENT(entityId);
+        edict_t* pEnt2 = INDEXENT(targetEntityId);
+        if (FNullEnt(pEnt1) || FNullEnt(pEnt2))
+            return 0.0f;
+
+        Vector diff = pEnt1->v.origin - pEnt2->v.origin;
+        return diff.Length();
+    }
+    catch (...)
+    {
+        return 0.0f;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityInSphere(int startEntityId, const CSharpVector3* origin, float radius)
+{
+    if (!CSharpBridge::g_initialized || !origin || radius < 0)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        Vector searchOrigin = CSharpVectorToVector(origin);
+        edict_t* pStart = (startEntityId > 0) ? INDEXENT(startEntityId) : nullptr;
+
+        edict_t* pFound = FIND_ENTITY_IN_SPHERE(pStart, searchOrigin, radius);
+        return FNullEnt(pFound) ? 0 : ENTINDEX(pFound);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityByClass(int startEntityId, const char* className)
+{
+    if (!CSharpBridge::g_initialized || !className)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pStart = (startEntityId > 0) ? INDEXENT(startEntityId) : nullptr;
+        edict_t* pFound = FIND_ENTITY_BY_STRING(pStart, "classname", className);
+        return FNullEnt(pFound) ? 0 : ENTINDEX(pFound);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityByClassInSphere(int startEntityId, const CSharpVector3* origin, float radius, const char* className)
+{
+    if (!CSharpBridge::g_initialized || !origin || !className || radius < 0)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        Vector searchOrigin = CSharpVectorToVector(origin);
+        int currentEntity = startEntityId;
+
+        while ((currentEntity = FindEntityInSphere(currentEntity, origin, radius)) > 0)
+        {
+            edict_t* pEnt = INDEXENT(currentEntity);
+            if (!FNullEnt(pEnt))
+            {
+                const char* entClassName = STRING(pEnt->v.classname);
+                if (entClassName && strcmp(entClassName, className) == 0)
+                    return currentEntity;
+            }
+        }
+        return 0;
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityByModel(int startEntityId, const char* modelName)
+{
+    if (!CSharpBridge::g_initialized || !modelName)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pStart = (startEntityId > 0) ? INDEXENT(startEntityId) : nullptr;
+        edict_t* pFound = FIND_ENTITY_BY_STRING(pStart, "model", modelName);
+        return FNullEnt(pFound) ? 0 : ENTINDEX(pFound);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityByTarget(int startEntityId, const char* targetName)
+{
+    if (!CSharpBridge::g_initialized || !targetName)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pStart = (startEntityId > 0) ? INDEXENT(startEntityId) : nullptr;
+        edict_t* pFound = FIND_ENTITY_BY_STRING(pStart, "target", targetName);
+        return FNullEnt(pFound) ? 0 : ENTINDEX(pFound);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityByTargetName(int startEntityId, const char* targetName)
+{
+    if (!CSharpBridge::g_initialized || !targetName)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pStart = (startEntityId > 0) ? INDEXENT(startEntityId) : nullptr;
+        edict_t* pFound = FIND_ENTITY_BY_STRING(pStart, "targetname", targetName);
+        return FNullEnt(pFound) ? 0 : ENTINDEX(pFound);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindEntityByOwner(int startEntityId, int ownerEntityId)
+{
+    if (!CSharpBridge::g_initialized || ownerEntityId <= 0)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pOwner = INDEXENT(ownerEntityId);
+        if (FNullEnt(pOwner))
+            return 0;
+
+        for (int i = startEntityId + 1; i <= gpGlobals->maxEntities; i++)
+        {
+            edict_t* pEnt = INDEXENT(i);
+            if (!FNullEnt(pEnt) && !pEnt->free && pEnt->v.owner == pOwner)
+                return i;
+        }
+        return 0;
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+CSHARP_EXPORT int CSHARP_CALL FindGrenadeEntity(int playerId, char* modelName, int maxLength, int startEntityId)
+{
+    if (!CSharpBridge::g_initialized || playerId <= 0 || !modelName || maxLength <= 0)
+        return 0;
+
+    CSharpBridge::AutoLock lock;
+
+    try
+    {
+        edict_t* pPlayer = INDEXENT(playerId);
+        if (FNullEnt(pPlayer))
+            return 0;
+
+        for (int i = startEntityId + 1; i <= gpGlobals->maxEntities; i++)
+        {
+            edict_t* pEnt = INDEXENT(i);
+            if (!FNullEnt(pEnt) && !pEnt->free && pEnt->v.owner == pPlayer)
+            {
+                const char* entClassName = STRING(pEnt->v.classname);
+                if (entClassName && strstr(entClassName, "grenade"))
+                {
+                    const char* entModel = STRING(pEnt->v.model);
+                    if (entModel)
+                    {
+                        int len = strlen(entModel);
+                        if (len >= maxLength)
+                            len = maxLength - 1;
+                        strncpy(modelName, entModel, len);
+                        modelName[len] = '\0';
+                    }
+                    return i;
+                }
+            }
+        }
+        return 0;
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
 #ifdef __linux__
     return true;
 #else

@@ -402,6 +402,498 @@ CSHARP_EXPORT int CSHARP_CALL MinInt(int a, int b);
 CSHARP_EXPORT int CSHARP_CALL MaxInt(int a, int b);
 CSHARP_EXPORT int CSHARP_CALL ClampInt(int value, int min, int max);
 
+// ========== Engine Module C# Bridge Interface ==========
+
+// Entity lifecycle management callback types
+typedef void (CSHARP_CALL *EntitySpawnCallback)(int entityId);
+typedef void (CSHARP_CALL *EntityRemoveCallback)(int entityId);
+
+// Entity interaction callback types
+typedef void (CSHARP_CALL *EntityTouchCallback)(int toucher, int touched);
+typedef void (CSHARP_CALL *EntityThinkCallback)(int entityId);
+
+// Player input callback types
+typedef void (CSHARP_CALL *PlayerImpulseCallback)(int playerId, int impulse);
+
+// Vector structure for C# interop
+struct CSharpVector3
+{
+    float x, y, z;
+};
+
+// Trace result structure for C# interop
+struct CSharpTraceResult
+{
+    int allSolid;
+    int startSolid;
+    int inOpen;
+    int inWater;
+    float fraction;
+    CSharpVector3 endPos;
+    float planeDist;
+    CSharpVector3 planeNormal;
+    int hitEntity;
+    int hitGroup;
+};
+
+// User command structure for C# interop
+struct CSharpUserCmd
+{
+    short lerp_msec;
+    unsigned char msec;
+    CSharpVector3 viewAngles;
+    float forwardMove;
+    float sideMove;
+    float upMove;
+    short lightLevel;
+    unsigned short buttons;
+    char impulse;
+    char weaponSelect;
+    int impact_index;
+    CSharpVector3 impact_position;
+};
+
+// ========== Entity Lifecycle Management ==========
+
+/// <summary>
+/// 创建实体 / Create entity
+/// </summary>
+/// <param name="className">实体类名 / Entity class name</param>
+/// <returns>实体索引，失败返回0 / Entity index, returns 0 on failure</returns>
+CSHARP_EXPORT int CSHARP_CALL CreateEntity(const char* className);
+
+/// <summary>
+/// 移除实体 / Remove entity
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL RemoveEntity(int entityId);
+
+/// <summary>
+/// 获取实体总数 / Get entity count
+/// </summary>
+/// <returns>实体总数 / Entity count</returns>
+CSHARP_EXPORT int CSHARP_CALL GetEntityCount();
+
+/// <summary>
+/// 检查实体是否有效 / Check if entity is valid
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <returns>是否有效 / Whether valid</returns>
+CSHARP_EXPORT bool CSHARP_CALL IsValidEntity(int entityId);
+
+// ========== Entity Property Read/Write ==========
+
+/// <summary>
+/// 获取实体浮点属性 / Get entity float property
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <returns>属性值 / Property value</returns>
+CSHARP_EXPORT float CSHARP_CALL GetEntityFloat(int entityId, int property);
+
+/// <summary>
+/// 设置实体浮点属性 / Set entity float property
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <param name="value">属性值 / Property value</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetEntityFloat(int entityId, int property, float value);
+
+/// <summary>
+/// 获取实体整数属性 / Get entity integer property
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <returns>属性值 / Property value</returns>
+CSHARP_EXPORT int CSHARP_CALL GetEntityInt(int entityId, int property);
+
+/// <summary>
+/// 设置实体整数属性 / Set entity integer property
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <param name="value">属性值 / Property value</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetEntityInt(int entityId, int property, int value);
+
+/// <summary>
+/// 获取实体向量属性 / Get entity vector property
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <param name="vector">输出向量 / Output vector</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL GetEntityVector(int entityId, int property, CSharpVector3* vector);
+
+/// <summary>
+/// 设置实体向量属性 / Set entity vector property
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <param name="vector">向量值 / Vector value</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetEntityVector(int entityId, int property, const CSharpVector3* vector);
+
+/// <summary>
+/// 获取实体字符串属性 / Get entity string property
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <param name="buffer">输出缓冲区 / Output buffer</param>
+/// <param name="maxLength">缓冲区最大长度 / Buffer max length</param>
+/// <returns>实际长度 / Actual length</returns>
+CSHARP_EXPORT int CSHARP_CALL GetEntityString(int entityId, int property, char* buffer, int maxLength);
+
+/// <summary>
+/// 设置实体字符串属性 / Set entity string property
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <param name="value">字符串值 / String value</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetEntityString(int entityId, int property, const char* value);
+
+/// <summary>
+/// 获取实体关联的实体 / Get entity's associated entity
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <returns>关联实体索引 / Associated entity index</returns>
+CSHARP_EXPORT int CSHARP_CALL GetEntityEdict(int entityId, int property);
+
+/// <summary>
+/// 设置实体关联的实体 / Set entity's associated entity
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="property">属性类型 / Property type</param>
+/// <param name="targetEntityId">目标实体索引 / Target entity index</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetEntityEdict(int entityId, int property, int targetEntityId);
+
+/// <summary>
+/// 设置实体原点 / Set entity origin
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="origin">原点坐标 / Origin coordinates</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetEntityOrigin(int entityId, const CSharpVector3* origin);
+
+/// <summary>
+/// 设置实体模型 / Set entity model
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="modelName">模型名称 / Model name</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetEntityModel(int entityId, const char* modelName);
+
+/// <summary>
+/// 设置实体大小 / Set entity size
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="mins">最小边界 / Minimum bounds</param>
+/// <param name="maxs">最大边界 / Maximum bounds</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetEntitySize(int entityId, const CSharpVector3* mins, const CSharpVector3* maxs);
+
+// ========== Entity Search and Finding ==========
+
+/// <summary>
+/// 获取实体范围内的距离 / Get distance to entity in range
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <param name="targetEntityId">目标实体索引 / Target entity index</param>
+/// <returns>距离值 / Distance value</returns>
+CSHARP_EXPORT float CSHARP_CALL GetEntityRange(int entityId, int targetEntityId);
+
+/// <summary>
+/// 在球形范围内查找实体 / Find entity in sphere
+/// </summary>
+/// <param name="startEntityId">起始实体索引 / Start entity index</param>
+/// <param name="origin">中心点 / Center point</param>
+/// <param name="radius">半径 / Radius</param>
+/// <returns>找到的实体索引，未找到返回0 / Found entity index, returns 0 if not found</returns>
+CSHARP_EXPORT int CSHARP_CALL FindEntityInSphere(int startEntityId, const CSharpVector3* origin, float radius);
+
+/// <summary>
+/// 根据类名查找实体 / Find entity by class name
+/// </summary>
+/// <param name="startEntityId">起始实体索引 / Start entity index</param>
+/// <param name="className">类名 / Class name</param>
+/// <returns>找到的实体索引，未找到返回0 / Found entity index, returns 0 if not found</returns>
+CSHARP_EXPORT int CSHARP_CALL FindEntityByClass(int startEntityId, const char* className);
+
+/// <summary>
+/// 在球形范围内根据类名查找实体 / Find entity by class in sphere
+/// </summary>
+/// <param name="startEntityId">起始实体索引 / Start entity index</param>
+/// <param name="origin">中心点 / Center point</param>
+/// <param name="radius">半径 / Radius</param>
+/// <param name="className">类名 / Class name</param>
+/// <returns>找到的实体索引，未找到返回0 / Found entity index, returns 0 if not found</returns>
+CSHARP_EXPORT int CSHARP_CALL FindEntityByClassInSphere(int startEntityId, const CSharpVector3* origin, float radius, const char* className);
+
+/// <summary>
+/// 根据模型名查找实体 / Find entity by model name
+/// </summary>
+/// <param name="startEntityId">起始实体索引 / Start entity index</param>
+/// <param name="modelName">模型名 / Model name</param>
+/// <returns>找到的实体索引，未找到返回0 / Found entity index, returns 0 if not found</returns>
+CSHARP_EXPORT int CSHARP_CALL FindEntityByModel(int startEntityId, const char* modelName);
+
+/// <summary>
+/// 根据目标名查找实体 / Find entity by target name
+/// </summary>
+/// <param name="startEntityId">起始实体索引 / Start entity index</param>
+/// <param name="targetName">目标名 / Target name</param>
+/// <returns>找到的实体索引，未找到返回0 / Found entity index, returns 0 if not found</returns>
+CSHARP_EXPORT int CSHARP_CALL FindEntityByTarget(int startEntityId, const char* targetName);
+
+/// <summary>
+/// 根据目标名称查找实体 / Find entity by target name
+/// </summary>
+/// <param name="startEntityId">起始实体索引 / Start entity index</param>
+/// <param name="targetName">目标名称 / Target name</param>
+/// <returns>找到的实体索引，未找到返回0 / Found entity index, returns 0 if not found</returns>
+CSHARP_EXPORT int CSHARP_CALL FindEntityByTargetName(int startEntityId, const char* targetName);
+
+/// <summary>
+/// 根据拥有者查找实体 / Find entity by owner
+/// </summary>
+/// <param name="startEntityId">起始实体索引 / Start entity index</param>
+/// <param name="ownerEntityId">拥有者实体索引 / Owner entity index</param>
+/// <returns>找到的实体索引，未找到返回0 / Found entity index, returns 0 if not found</returns>
+CSHARP_EXPORT int CSHARP_CALL FindEntityByOwner(int startEntityId, int ownerEntityId);
+
+/// <summary>
+/// 查找手榴弹实体 / Find grenade entity
+/// </summary>
+/// <param name="playerId">玩家索引 / Player index</param>
+/// <param name="modelName">模型名缓冲区 / Model name buffer</param>
+/// <param name="maxLength">缓冲区最大长度 / Buffer max length</param>
+/// <param name="startEntityId">起始实体索引 / Start entity index</param>
+/// <returns>找到的手榴弹实体索引，未找到返回0 / Found grenade entity index, returns 0 if not found</returns>
+CSHARP_EXPORT int CSHARP_CALL FindGrenadeEntity(int playerId, char* modelName, int maxLength, int startEntityId);
+
+// ========== Physics Detection and Tracing ==========
+
+/// <summary>
+/// 检查点的内容类型 / Check point contents
+/// </summary>
+/// <param name="point">检查点坐标 / Point coordinates</param>
+/// <returns>内容类型 / Contents type</returns>
+CSHARP_EXPORT int CSHARP_CALL GetPointContents(const CSharpVector3* point);
+
+/// <summary>
+/// 执行射线追踪 / Perform ray trace
+/// </summary>
+/// <param name="start">起始点 / Start point</param>
+/// <param name="end">结束点 / End point</param>
+/// <param name="ignoreEntityId">忽略的实体索引 / Ignored entity index</param>
+/// <param name="result">追踪结果 / Trace result</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL TraceLine(const CSharpVector3* start, const CSharpVector3* end, int ignoreEntityId, CSharpTraceResult* result);
+
+/// <summary>
+/// 执行包围盒追踪 / Perform hull trace
+/// </summary>
+/// <param name="start">起始点 / Start point</param>
+/// <param name="end">结束点 / End point</param>
+/// <param name="ignoreEntityId">忽略的实体索引 / Ignored entity index</param>
+/// <param name="hullType">包围盒类型 / Hull type</param>
+/// <param name="result">追踪结果 / Trace result</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL TraceHull(const CSharpVector3* start, const CSharpVector3* end, int ignoreEntityId, int hullType, CSharpTraceResult* result);
+
+/// <summary>
+/// 获取追踪法线 / Get trace normal
+/// </summary>
+/// <param name="start">起始点 / Start point</param>
+/// <param name="end">结束点 / End point</param>
+/// <param name="ignoreEntityId">忽略的实体索引 / Ignored entity index</param>
+/// <param name="normal">输出法线 / Output normal</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL GetTraceNormal(const CSharpVector3* start, const CSharpVector3* end, int ignoreEntityId, CSharpVector3* normal);
+
+/// <summary>
+/// 向前追踪 / Trace forward
+/// </summary>
+/// <param name="start">起始点 / Start point</param>
+/// <param name="angle">角度 / Angle</param>
+/// <param name="give">给定值 / Give value</param>
+/// <param name="ignoreEntityId">忽略的实体索引 / Ignored entity index</param>
+/// <param name="hitX">命中X坐标 / Hit X coordinate</param>
+/// <param name="hitY">命中Y坐标 / Hit Y coordinate</param>
+/// <param name="shortestDistance">最短距离 / Shortest distance</param>
+/// <param name="shortestDistLow">最短距离低值 / Shortest distance low</param>
+/// <param name="shortestDistHigh">最短距离高值 / Shortest distance high</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL TraceForward(const CSharpVector3* start, const CSharpVector3* angle, float give, int ignoreEntityId,
+    float* hitX, float* hitY, float* shortestDistance, float* shortestDistLow, float* shortestDistHigh);
+
+// ========== Visual Detection and View ==========
+
+/// <summary>
+/// 检查实体是否在视锥内 / Check if entity is in view cone
+/// </summary>
+/// <param name="viewerEntityId">观察者实体索引 / Viewer entity index</param>
+/// <param name="targetEntityId">目标实体索引 / Target entity index</param>
+/// <returns>是否在视锥内 / Whether in view cone</returns>
+CSHARP_EXPORT bool CSHARP_CALL IsEntityInViewCone(int viewerEntityId, int targetEntityId);
+
+/// <summary>
+/// 检查实体是否可见 / Check if entity is visible
+/// </summary>
+/// <param name="viewerEntityId">观察者实体索引 / Viewer entity index</param>
+/// <param name="targetEntityId">目标实体索引 / Target entity index</param>
+/// <returns>是否可见 / Whether visible</returns>
+CSHARP_EXPORT bool CSHARP_CALL IsEntityVisible(int viewerEntityId, int targetEntityId);
+
+/// <summary>
+/// 造成范围伤害 / Cause radius damage
+/// </summary>
+/// <param name="origin">伤害中心点 / Damage center point</param>
+/// <param name="damage">伤害值 / Damage value</param>
+/// <param name="radius">伤害半径 / Damage radius</param>
+/// <param name="inflictorEntityId">伤害施加者实体索引 / Inflictor entity index</param>
+/// <param name="attackerEntityId">攻击者实体索引 / Attacker entity index</param>
+/// <param name="damageType">伤害类型 / Damage type</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL CauseRadiusDamage(const CSharpVector3* origin, float damage, float radius,
+    int inflictorEntityId, int attackerEntityId, int damageType);
+
+// ========== Player View Control ==========
+
+/// <summary>
+/// 设置玩家视图 / Set player view
+/// </summary>
+/// <param name="playerId">玩家索引 / Player index</param>
+/// <param name="viewType">视图类型 / View type</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetPlayerView(int playerId, int viewType);
+
+/// <summary>
+/// 附加玩家视图到实体 / Attach player view to entity
+/// </summary>
+/// <param name="playerId">玩家索引 / Player index</param>
+/// <param name="targetEntityId">目标实体索引 / Target entity index</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL AttachPlayerView(int playerId, int targetEntityId);
+
+// ========== Player Input and Commands ==========
+
+/// <summary>
+/// 获取玩家用户命令 / Get player user command
+/// </summary>
+/// <param name="playerId">玩家索引 / Player index</param>
+/// <param name="userCmd">输出用户命令 / Output user command</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL GetPlayerUserCmd(int playerId, CSharpUserCmd* userCmd);
+
+/// <summary>
+/// 设置玩家用户命令 / Set player user command
+/// </summary>
+/// <param name="playerId">玩家索引 / Player index</param>
+/// <param name="userCmd">用户命令 / User command</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetPlayerUserCmd(int playerId, const CSharpUserCmd* userCmd);
+
+/// <summary>
+/// 获取玩家语音标志 / Get player speak flags
+/// </summary>
+/// <param name="playerId">玩家索引 / Player index</param>
+/// <returns>语音标志 / Speak flags</returns>
+CSHARP_EXPORT int CSHARP_CALL GetPlayerSpeakFlags(int playerId);
+
+/// <summary>
+/// 设置玩家语音标志 / Set player speak flags
+/// </summary>
+/// <param name="playerId">玩家索引 / Player index</param>
+/// <param name="flags">语音标志 / Speak flags</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL SetPlayerSpeakFlags(int playerId, int flags);
+
+// ========== Event Callback Registration ==========
+
+/// <summary>
+/// 注册脉冲回调 / Register impulse callback
+/// </summary>
+/// <param name="impulse">脉冲值 / Impulse value</param>
+/// <param name="callback">回调函数 / Callback function</param>
+/// <returns>回调ID，失败返回-1 / Callback ID, returns -1 on failure</returns>
+CSHARP_EXPORT int CSHARP_CALL RegisterImpulseCallback(int impulse, PlayerImpulseCallback callback);
+
+/// <summary>
+/// 注册触碰回调 / Register touch callback
+/// </summary>
+/// <param name="touchedClassName">被触碰实体类名 / Touched entity class name</param>
+/// <param name="toucherClassName">触碰实体类名 / Toucher entity class name</param>
+/// <param name="callback">回调函数 / Callback function</param>
+/// <returns>回调ID，失败返回-1 / Callback ID, returns -1 on failure</returns>
+CSHARP_EXPORT int CSHARP_CALL RegisterTouchCallback(const char* touchedClassName, const char* toucherClassName, EntityTouchCallback callback);
+
+/// <summary>
+/// 注册思考回调 / Register think callback
+/// </summary>
+/// <param name="className">实体类名 / Entity class name</param>
+/// <param name="callback">回调函数 / Callback function</param>
+/// <returns>回调ID，失败返回-1 / Callback ID, returns -1 on failure</returns>
+CSHARP_EXPORT int CSHARP_CALL RegisterThinkCallback(const char* className, EntityThinkCallback callback);
+
+/// <summary>
+/// 注销脉冲回调 / Unregister impulse callback
+/// </summary>
+/// <param name="callbackId">回调ID / Callback ID</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL UnregisterImpulseCallback(int callbackId);
+
+/// <summary>
+/// 注销触碰回调 / Unregister touch callback
+/// </summary>
+/// <param name="callbackId">回调ID / Callback ID</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL UnregisterTouchCallback(int callbackId);
+
+/// <summary>
+/// 注销思考回调 / Unregister think callback
+/// </summary>
+/// <param name="callbackId">回调ID / Callback ID</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL UnregisterThinkCallback(int callbackId);
+
+// ========== Entity Behavior Simulation ==========
+
+/// <summary>
+/// 分发实体生成 / Dispatch entity spawn
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL DispatchEntitySpawn(int entityId);
+
+/// <summary>
+/// 调用实体思考 / Call entity think
+/// </summary>
+/// <param name="entityId">实体索引 / Entity index</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL CallEntityThink(int entityId);
+
+/// <summary>
+/// 模拟实体触碰 / Fake entity touch
+/// </summary>
+/// <param name="toucherEntityId">触碰者实体索引 / Toucher entity index</param>
+/// <param name="touchedEntityId">被触碰者实体索引 / Touched entity index</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL FakeEntityTouch(int toucherEntityId, int touchedEntityId);
+
+/// <summary>
+/// 强制实体使用 / Force entity use
+/// </summary>
+/// <param name="usedEntityId">被使用实体索引 / Used entity index</param>
+/// <param name="userEntityId">使用者实体索引 / User entity index</param>
+/// <returns>是否成功 / Whether successful</returns>
+CSHARP_EXPORT bool CSHARP_CALL ForceEntityUse(int usedEntityId, int userEntityId);
+
 // Event parameter reading functions
 CSHARP_EXPORT int CSHARP_CALL GetEventArgCount();
 CSHARP_EXPORT bool CSHARP_CALL GetEventArg(int index, CSharpEventParam* outParam);
